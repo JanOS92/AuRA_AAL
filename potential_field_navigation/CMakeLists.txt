@@ -4,6 +4,7 @@ project(potential_field_navigation)
 # Instruct CMake to run moc automatically when needed.
 set(CMAKE_AUTOMOC ON)
 
+find_package(OpenCV REQUIRED) # JO
 find_package(OpenMP REQUIRED)
 find_package(Qt5Widgets REQUIRED)
 find_package(Boost REQUIRED COMPONENTS thread)
@@ -47,6 +48,7 @@ add_executable(image_to_vectorfield_node
 
 target_link_libraries(image_to_vectorfield_node
   ${catkin_LIBRARIES}
+  ${OpenCV_LIBS} # JO
   )
 
 #vectorfield_to_gridmap_node
@@ -55,6 +57,7 @@ add_executable(vectorfield_to_gridmap_node
 
 target_link_libraries(vectorfield_to_gridmap_node
   ${catkin_LIBRARIES}
+  ${OpenCV_LIBS} # JO
   )
 
 #image_selecter_node
