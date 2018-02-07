@@ -36,7 +36,7 @@ static int desired_vectorfield_width, desired_vectorfield_height;
 
 // Heuristic values
 static float heuristic_factor = 1.0f;
-static float heuristic_abs_min = 1.0f;
+static float heuristic_abs_min = 0.05f;
 static int heuristic_apply;
 
 void process(const sensor_msgs::ImageConstPtr &msg) {

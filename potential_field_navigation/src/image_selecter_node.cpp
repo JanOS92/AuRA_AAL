@@ -136,7 +136,7 @@ void ImageSelecterGUI::spin() {
 void ImageSelecterGUI::selectImage() {
 
     QString fileName = QFileDialog::getOpenFileName(this, QString::fromStdString("Open image"),
-                                                    QString::fromStdString("../patter/"),
+                                                    QString::fromStdString("/homes/josullivan/catkin_ws2/src/amiro_potential_field_navigation/potential_field_navigation"),
                                                     QString::fromStdString("Image Files (*.png *.jpg *.jpeg *.bmp)"));
 
     // Check if loading as grayscale

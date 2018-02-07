@@ -52,10 +52,6 @@ void process(const sensor_msgs::ImageConstPtr &msg) {
     sensor_msgs::ImagePtr rgbImage = cvImage.toImageMsg();
     rgbImagePublisher.publish(rgbImage);
 
-    // ToDo: Debug
-    cv::imshow("rgb", cvImage.image);
-    cv::waitKey(1);
-
     // Get the height
     cv::Mat mono = hsv_to_gray(hsv);
     cv_bridge::CvImage cvImageMono;

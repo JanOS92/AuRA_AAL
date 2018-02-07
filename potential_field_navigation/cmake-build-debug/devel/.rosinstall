@@ -1,0 +1,2 @@
+- setup-file:
+    local-name: /homes/josullivan/catkin_ws2/src/amiro_potential_field_navigation/potential_field_navigation/cmake-build-debug/devel/setup.sh
