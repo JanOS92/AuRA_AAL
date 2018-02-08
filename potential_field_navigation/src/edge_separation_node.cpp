@@ -19,17 +19,16 @@
 #include <opencv-3.3.1/opencv2/imgproc.hpp>
 
 // Utils
-#include <vector>
 #include "potential_field_utils.hpp"
 
 
 using namespace std;
 
 // Ros Topics
-string rosListenerTopic;
+string rosListenerTopicImg;
 string rosPublisherTopicImg;
 
-// ros::Publisher rosPublisher;
+// ROS publisher
 image_transport::Publisher imagePublisherImg;
 static image_transport::Publisher imagePublisher;
 
@@ -50,7 +49,6 @@ void edge_dyeing(const sensor_msgs::ImageConstPtr &msg) {
      */
     image = cv_bridge::toCvShare(msg, msg->encoding)->image; // get the image from the msg pointer
     cv::cvtColor(image,image_gray, cv::COLOR_RGB2GRAY); // convert the rgb image into grayscale image
-    cv::threshold(image_gray, image_binary, 200, 255, cv::THRESH_BINARY); // convert the grayscale image into a binary image
 
     /**
      * Edge extraction
@@ -58,25 +56,22 @@ void edge_dyeing(const sensor_msgs::ImageConstPtr &msg) {
     cv::Mat edgeMap(image_gray.rows, image_gray.cols, CV_32FC2, cv::Scalar(0.0f));
 
     int lowThreshold = 0;
-    int const max_lowThreshold = 100;
     int ratio = 3;
     int kernel_size = 3;
 
-    cv::blur(image_gray, edgeMap, cv::Size(3,3) ); // reduce noise with a kernel 3x3
+    cv::blur(image_gray, edgeMap, cv::Size(kernel_size, kernel_size)); // reduce noise with a kernel 3x3
     cv::Canny(edgeMap, edgeMap, lowThreshold, lowThreshold * ratio, kernel_size); // canny detector
-
 
     /**
      * Edge clustering
      */
     cv::Mat labels;
-    int nLabels = cv::connectedComponents(edgeMap, labels);
-    ROS_INFO("nLabels = %i",nLabels);
+    int nLabels = cv::connectedComponents(edgeMap, labels); // find connected components in the edgeMap
 
     /**
     * Edge dyeing
     */
-    cv::Mat dyedRGB(image.rows, image.cols, CV_8UC3, cv::Scalar(0,0,255));
+    cv::Mat dyedBGR(image.rows, image.cols, CV_8UC3, cv::Scalar(0,0,255));
 
     std::vector<cv::Vec3b> colors(nLabels);
     colors[0] = cv::Vec3b(0, 0, 0); // set background value
@@ -98,25 +93,36 @@ void edge_dyeing(const sensor_msgs::ImageConstPtr &msg) {
     }
 
     // dye the edges
-    for(int idy = 0; idy < dyedRGB.rows; ++idy){
+#pragma omp parallel for
+    for(int idy = 0; idy < dyedBGR.rows; ++idy){
 
-        for(int idx = 0; idx < dyedRGB.cols; ++idx){
+        for(int idx = 0; idx < dyedBGR.cols; ++idx){
 
             int labelIdx = labels.at<int>(idy, idx);
-            cv::Vec3b &pixel = dyedRGB.at<cv::Vec3b>(idy, idx);
+            cv::Vec3b &pixel = dyedBGR.at<cv::Vec3b>(idy, idx);
             pixel = colors[labelIdx];
 
         }
 
     }
-
-
+    
     /**
-     * Debug only
-     */
-    cv::namedWindow( "Display window", cv::WINDOW_AUTOSIZE ); // create a window for display.
-    cv::imshow( "Display window", dyedRGB ); // show image
-    cv::waitKey(0); // wait for a keystroke in the window
+    * Publish dyedBGR
+    */
+    cv_bridge::CvImage cvImage;
+    cvImage.encoding = sensor_msgs::image_encodings::BGR8;
+    cvImage.image = dyedBGR;
+    cvImage.header.frame_id = "current"; // send always as current
+
+    ROS_INFO("[%s] Send as current", ros::this_node::getName().c_str());
+    imagePublisher.publish(cvImage.toImageMsg());
+
+//    /**
+//     * Debug only
+//     */
+//    cv::namedWindow("Display window", cv::WINDOW_AUTOSIZE); // create a window for display.
+//    cv::imshow("Display window", dyedBGR); // show image
+//    cv::waitKey(0); // wait for a keystroke in the window
 
 }
 
@@ -128,19 +134,17 @@ int main(int argc, char *argv[]) {
     ROS_INFO("Start: %s", ros::this_node::getName().c_str());
 
     // ROS Topics
-    string rosPublisherTopic;
-    string rosListenerTopic;
-    node.param<string>("image_listener_topic", rosListenerTopic, "/image");
+    node.param<string>("image_listener_topic", rosListenerTopicImg, "/image");
     node.param<string>("dyed_image_publisher_topic", rosPublisherTopicImg, "/image/image_dyed");
 
     // image transport setup
     image_transport::ImageTransport imageTransport(node);
 
     // ROS subscriber
-    image_transport::Subscriber sub = imageTransport.subscribe(rosListenerTopic, 1, edge_dyeing);
+    image_transport::Subscriber sub = imageTransport.subscribe(rosListenerTopicImg, 1, edge_dyeing);
 
     // ROS publisher
-    imagePublisher = imageTransport.advertise(rosPublisherTopic, 1, true);
+    imagePublisher = imageTransport.advertise(rosPublisherTopicImg, 1, true);
 
     ros::spin();
     return 0;

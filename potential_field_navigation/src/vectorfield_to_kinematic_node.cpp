@@ -29,8 +29,10 @@ static double meterPerPixel;
 static int syncTopics;
 static cv::Mat vectorfield;
 static bool dataArrived = false;
-static float velocityScale_meterPerSecond = 0.1;
-static float angularScale_radPerSecond = 0.1;
+//static float velocityScale_meterPerSecond = 0.1;
+static float velocityScale_meterPerSecond = 0.01; // JO
+//static float angularScale_radPerSecond = 0.1;
+static float angularScale_radPerSecond = 0.01; // JO
 static bool pixelMode;
 static bool twistMode;
 static double pixelScale;
@@ -67,13 +69,17 @@ void process(const cv::Mat &vectorfield, const nav_msgs::OdometryConstPtr odom) 
     const double vectorAngle = atan2(vector.y, vector.x);
 
     // Get the robot information (invert the robot angle, because it is given in the camera frame with z-axis pointing down)
-    const double robotAngle = (-1) * tf::getYaw(odom->pose.pose.orientation);
+//    const double robotAngle = (-1) * tf::getYaw(odom->pose.pose.orientation);
+    const double robotAngle = tf::getYaw(odom->pose.pose.orientation); // JO
     const float angleDiff = getAngleDiff(robotAngle, vectorAngle);
 
     if (twistMode) {
 
+        ROS_INFO("vectorAbs = %f, angleDiff = %f", vectorAbs, angleDiff); // JO
+
         // Calculate the steering vector
         geometry_msgs::Twist twist;
+
         twist.linear.x = velocityScale_meterPerSecond * vectorAbs;
         twist.angular.z = angularScale_radPerSecond * angleDiff;
 
@@ -147,7 +153,8 @@ int main(int argc, char *argv[]) {
     node.param<float>("velocityScale_meterPerSecond", velocityScale_meterPerSecond, 0.1);
     node.param<float>("angularScale_radPerSecond", angularScale_radPerSecond, 0.1);
     node.param<int>("syncTopics", syncTopics, 0);
-    node.param<bool>("pixel_mode", pixelMode, false);
+//    node.param<bool>("pixel_mode", pixelMode, false);
+    node.param<bool>("pixel_mode", pixelMode, true);
     node.param<bool>("twist_mode", twistMode, false);
     node.param<double>("pixel_scale", pixelScale, 1.0);
 

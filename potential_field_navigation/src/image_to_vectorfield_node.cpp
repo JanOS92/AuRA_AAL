@@ -44,6 +44,8 @@ void process(const sensor_msgs::ImageConstPtr &msg) {
     cv::Mat image = cv_bridge::toCvShare(msg, msg->encoding)->image;
 //  rot90(image, RotateFlags::ROTATE_90_COUNTERCLOCKWISE);
 
+    ROS_INFO("[%s] Got an image", ros::this_node::getName().c_str());
+
     cv::Mat bgr[3];
     cv::split(image, bgr);
 
@@ -149,6 +151,10 @@ void process(const sensor_msgs::ImageConstPtr &msg) {
         // Get vector field
         vectorFieldRed = potentialfield_to_vectorfield(potentialFieldRed, true);
         vectorFieldBlue = potentialfield_to_vectorfield(potentialFieldBlue, true);
+
+        // Debug only
+        rot90(vectorFieldRed,1);
+        rot90(vectorFieldBlue,1);
 
     } else {
 
@@ -294,6 +300,14 @@ void process(const sensor_msgs::ImageConstPtr &msg) {
             // Subsum the vector fields of the charges
             cv::add(vectorFieldBlue, vectorFieldRed, vectorField);
         }
+
+    } else {
+
+        // Subsum the vector fields
+        cv::add(vectorFieldBlue, vectorFieldRed, vectorField);
+
+        ROS_INFO("[%s] Skip heuristics.", ros::this_node::getName().c_str());
+
     }
 
     // Sanity check for vectorfield size
@@ -320,8 +334,7 @@ void process(const sensor_msgs::ImageConstPtr &msg) {
     // Prepare data for publishing
     cv_bridge::CvImage cvImagePot;
     cvImagePot.encoding = sensor_msgs::image_encodings::TYPE_32FC1;
-//    cvImagePot.image = potentialFieldBlue + potentialFieldBlue; //ToDo: Failure?
-    cvImagePot.image = potentialFieldBlue + potentialFieldRed; // JO
+    cvImagePot.image = potentialFieldBlue + potentialFieldRed;
 //  rot90(cvImagePot.image, RotateFlags::ROTATE_90_CLOCKWISE);
 
     cv_bridge::CvImage cvImageVec;
@@ -345,10 +358,11 @@ int main(int argc, char *argv[]) {
     ROS_INFO("Start: %s", ros::this_node::getName().c_str());
 
     // ROS Topics
-    node.param<string>("image_listener_topic", rosListenerTopic, "/image");
+//    node.param<string>("image_listener_topic", rosListenerTopic, "/image");
+    node.param<string>("image_listener_topic", rosListenerTopic, "/image/image_dyed");
     node.param<string>("potentialfield_publisher_topic", rosPublisherTopicPot, "/image/potentialfield");
     node.param<string>("vectorfield_publisher_topic", rosPublisherTopicVec, "/image/vectorfield");
-    node.param<int>("heuristic_apply", heuristic_apply, 1);
+    node.param<int>("heuristic_apply", heuristic_apply, 0);
     node.param<float>("heuristic_factor", heuristic_factor, 1.0);
     node.param<float>("heuristic_abs_min", heuristic_abs_min, 1.0);
     node.param<int>("image_flip_code", image_flip_code, 0);
