@@ -34,19 +34,21 @@ static bool dataArrived1, dataArrived2;
 static int normalize;
 static float rate;
 
-void process1(const sensor_msgs::ImageConstPtr &msg) {
+void process1(const sensor_msgs::ImageConstPtr &msg) { // current
 
     dataArrived1 = true;
     cv_bridge::toCvShare(msg, msg->encoding)->image.copyTo(field1);
-    ROS_DEBUG_STREAM("process2, size (x,y): " << field1.cols << " " << field1.rows);
+    ROS_DEBUG_STREAM("process1, size (x,y): " << field1.cols << " " << field1.rows);
+    ROS_INFO("process1, size (%i,%i)", field1.cols,  field1.rows);
 
 }
 
-void process2(const sensor_msgs::ImageConstPtr &msg) {
+void process2(const sensor_msgs::ImageConstPtr &msg) { // charge
 
     dataArrived2 = true;
     cv_bridge::toCvShare(msg, msg->encoding)->image.copyTo(field2);
-    ROS_DEBUG_STREAM("process1, size (x,y): " << field2.cols << " " << field2.rows);
+    ROS_DEBUG_STREAM("process2, size (x,y): " << field2.cols << " " << field2.rows);
+    ROS_INFO("process2, size (%i,%i)", field2.cols,  field2.rows);
 
 }
 
@@ -62,11 +64,17 @@ int main(int argc, char *argv[]) {
     string vectorfieldPublisherTopic;
     string vectorfield1ListenerTopic, vectorfield2ListenerTopic;
     int fieldWidth, fieldHeight;
-    node.param<string>("field1_listener_topic", vectorfield1ListenerTopic, "/vectorfield/amiro1");
-    node.param<string>("field2_listener_topic", vectorfield2ListenerTopic, "/vectorfield/amiro2");
-    node.param<string>("vectorfield_publisher_topic", vectorfieldPublisherTopic, "/vectorfield/fused");
-    node.param<int>("field_width", fieldWidth, 1000);
-    node.param<int>("field_height", fieldHeight, 1000);
+//    node.param<string>("field1_listener_topic", vectorfield1ListenerTopic, "/vectorfield/amiro1");
+    node.param<string>("field1_listener_topic", vectorfield1ListenerTopic, "/vectorfield/final_image_current");
+//    node.param<string>("field2_listener_topic", vectorfield2ListenerTopic, "/vectorfield/amiro2");
+    node.param<string>("field2_listener_topic", vectorfield2ListenerTopic, "/vectorfield/final_image_charge");
+//    node.param<string>("vectorfield_publisher_topic", vectorfieldPublisherTopic, "/vectorfield/fused");
+    node.param<string>("vectorfield_publisher_topic", vectorfieldPublisherTopic, "/vectorfield/final_image");
+//    node.param<int>("field_width", fieldWidth, 1000);
+    node.param<int>("field_width", fieldWidth, 204);
+//    node.param<int>("field_height", fieldHeight, 1000);
+    node.param<int>("field_height", fieldHeight, 256);
+//    node.param<int>("normalize", normalize, 0);
     node.param<int>("normalize", normalize, 0);
     node.param<float>("rate", rate, 1);
 
@@ -138,7 +146,7 @@ int main(int argc, char *argv[]) {
 
         } else {
 
-            ROS_INFO_STREAM(ros::this_node::getName() << " STATE: Burn in");
+//            ROS_INFO_STREAM(ros::this_node::getName() << " STATE: Burn in");
 
             if (dataArrived1 && dataArrived2) {
 

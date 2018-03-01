@@ -30,40 +30,50 @@ static int syncTopics;
 static cv::Mat vectorfield;
 static bool dataArrived = false;
 //static float velocityScale_meterPerSecond = 0.1;
-static float velocityScale_meterPerSecond = 0.01; // JO
+static float velocityScale_meterPerSecond;
 //static float angularScale_radPerSecond = 0.1;
-static float angularScale_radPerSecond = 0.01; // JO
+static float angularScale_radPerSecond;
 static bool pixelMode;
 static bool twistMode;
 static double pixelScale;
 
 void process(const cv::Mat &vectorfield, const nav_msgs::OdometryConstPtr odom) {
 
-    cv::Point2i pose2d;
+    cv::Point2i pose2d_i;
+    cv::Point2i pose2d_o;
 
     if (pixelMode) {
 
-        pose2d = cv::Point2i((int) (odom->pose.pose.position.x * pixelScale),
+        pose2d_i = cv::Point2i((int) (odom->pose.pose.position.x * pixelScale),
                              (int) (odom->pose.pose.position.y * pixelScale));
 
     } else {
 
-        pose2d = cv::Point2i(pose2pixel(odom->pose.pose, vectorfield.cols, vectorfield.rows, meterPerPixel));
+        pose2d_i = cv::Point2i(pose2pixel(odom->pose.pose, vectorfield.cols, vectorfield.rows, meterPerPixel));
+
+        // rotate by 90° (ccw) and invert the y axis
+//        pose2d_o.x = -1.0 * pose2d_i.y;
+//        pose2d_o.y = -1.0 * pose2d_i.x;
+        // ToDo: Find out why this works out fine without any transformation?!
+        pose2d_o.x = pose2d_i.x;
+        pose2d_o.y = pose2d_i.y;
 
     }
 
-    if (pose2d.x < 0 || pose2d.x >= vectorfield.cols || pose2d.y < 0 || pose2d.y >= vectorfield.rows) {
+    if (pose2d_i.x < 0 || pose2d_i.x >= vectorfield.cols || pose2d_i.y < 0 || pose2d_i.y >= vectorfield.rows) {
 
-        ROS_WARN("[%s] Current AMiRo pose2d %d %d is not in image.", ros::this_node::getName().c_str(), pose2d.x,
-                 pose2d.y);
+        ROS_WARN("[%s] Current AMiRo pose2d_i %d %d is not in image.", ros::this_node::getName().c_str(), pose2d_i.x,
+                 pose2d_i.y);
         return;
 
     }
 
     // IMPORTANT: We assume the orientation of the robot resides in the world frame
     // Get the vector in the vectorfield at robot position
-    cv::Point2f vector(vectorfield.at<cv::Vec2f>(pose2d.y, pose2d.x)[0],
-                       vectorfield.at<cv::Vec2f>(pose2d.y, pose2d.x)[1]);
+//    cv::Point2f vector(vectorfield.at<cv::Vec2f>(pose2d_i.y, pose2d_i.x)[0],
+//                       vectorfield.at<cv::Vec2f>(pose2d_i.y, pose2d_i.x)[1]);
+    cv::Point2f vector(vectorfield.at<cv::Vec2f>(pose2d_o.y, pose2d_o.x)[0],
+                       vectorfield.at<cv::Vec2f>(pose2d_o.y, pose2d_o.x)[1]);
 
     const float vectorAbs = cv::norm(vector);
     const double vectorAngle = atan2(vector.y, vector.x);

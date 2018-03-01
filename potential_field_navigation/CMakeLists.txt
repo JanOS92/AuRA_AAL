@@ -46,13 +46,22 @@ include_directories(
   ${OPENCV_INCLUDE_DIR}
   ${grid_map_INCLUDE_DIRS}
 )
-#image_to_vectorfield_node
-add_executable(image_to_vectorfield_node
-  src/image_to_vectorfield_node.cpp)
 
-target_link_libraries(image_to_vectorfield_node
+#image_to_vectorfield_current_node
+add_executable(image_to_vectorfield_current_node
+        src/image_to_vectorfield_current_node.cpp)
+
+target_link_libraries(image_to_vectorfield_current_node
   ${catkin_LIBRARIES}
   ${OpenCV_LIBS})
+
+#image_to_vectorfield_charge_node
+add_executable(image_to_vectorfield_charge_node
+        src/image_to_vectorfield_charge_node.cpp)
+
+target_link_libraries(image_to_vectorfield_charge_node
+        ${catkin_LIBRARIES}
+        ${OpenCV_LIBS})
 
 #vectorfield_to_gridmap_node
 add_executable(vectorfield_to_gridmap_node
@@ -76,6 +85,14 @@ add_executable(edge_separation_node
         src/edge_separation_node.cpp)
 
 target_link_libraries(edge_separation_node
+        ${catkin_LIBRARIES}
+        ${OpenCV_LIBS})
+
+#redyeing_charge_node
+add_executable(redyeing_charge_node
+        src/redyeing_charge_node.cpp)
+
+target_link_libraries(redyeing_charge_node
         ${catkin_LIBRARIES}
         ${OpenCV_LIBS})
 

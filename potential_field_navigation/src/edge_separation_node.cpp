@@ -42,7 +42,6 @@ void edge_dyeing(const sensor_msgs::ImageConstPtr &msg) {
      */
     cv::Mat image;
     cv::Mat image_gray;
-    cv::Mat image_binary;
 
     /**
      * Initial image routine
@@ -50,49 +49,81 @@ void edge_dyeing(const sensor_msgs::ImageConstPtr &msg) {
     image = cv_bridge::toCvShare(msg, msg->encoding)->image; // get the image from the msg pointer
     cv::cvtColor(image,image_gray, cv::COLOR_RGB2GRAY); // convert the rgb image into grayscale image
 
+//    /**
+//     * Edge extraction
+//     */
+//    cv::Mat edgeMap(image_gray.rows, image_gray.cols, CV_32FC2, cv::Scalar(0.0f));
+//
+//    int lowThreshold = 0;
+//    int ratio = 3;
+//    int kernel_size = 3;
+//
+//    cv::blur(image_gray, edgeMap, cv::Size(kernel_size, kernel_size)); // reduce noise with a kernel 3x3
+//    cv::Canny(edgeMap, edgeMap, lowThreshold, lowThreshold * ratio, kernel_size); // canny detector
+
     /**
-     * Edge extraction
-     */
-    cv::Mat edgeMap(image_gray.rows, image_gray.cols, CV_32FC2, cv::Scalar(0.0f));
-
-    int lowThreshold = 0;
-    int ratio = 3;
-    int kernel_size = 3;
-
-    cv::blur(image_gray, edgeMap, cv::Size(kernel_size, kernel_size)); // reduce noise with a kernel 3x3
-    cv::Canny(edgeMap, edgeMap, lowThreshold, lowThreshold * ratio, kernel_size); // canny detector
+    * Edge extraction simple
+    */
+//    cv::Mat edgeMap(image_gray.rows, image_gray.cols, CV_32FC2, cv::Scalar(0.0f));
+    cv::Mat inv;
+//    cv::Mat thres;
+    cv::Mat image_binary(image_gray.size(), image_gray.type());
+    cv::bitwise_not ( image_gray, inv ); // invert the colors
+    cv::threshold( inv, image_binary, 129, 255, cv::THRESH_BINARY);
 
     /**
      * Edge clustering
      */
     cv::Mat labels;
-    int nLabels = cv::connectedComponents(edgeMap, labels); // find connected components in the edgeMap
+//    int nLabels = cv::connectedComponents(edgeMap, labels); // find connected components in the edgeMap
+    int nLabels = cv::connectedComponents(image_binary, labels); // find connected components in the edgeMap
 
     /**
     * Edge dyeing
     */
-    cv::Mat dyedBGR(image.rows, image.cols, CV_8UC3, cv::Scalar(0,0,255));
+    cv::Mat dyedBGR(image.rows, image.cols, CV_8UC3, cv::Scalar(0,0,0));
+    float dyeValue_max = 255.0;
+//    float dyeValue_max = 0.0;
+    float dyeValue_half = 128.0;
+    cv::Vec3b gray = cv::Vec3b( dyeValue_half, dyeValue_half, dyeValue_half );
+    cv::Vec3b black = cv::Vec3b( 0.0, 0.0, 0.0 );
 
     std::vector<cv::Vec3b> colors(nLabels);
-    colors[0] = cv::Vec3b(0, 0, 0); // set background value
+    colors[0] = black; // set background value
 
-    // set the dyeing vectors
-    float dyeValue = 255.0;
-    for(int label = 1; label <= nLabels; ++label) {
+    ROS_INFO("nLabels = %i", nLabels);
+
+//    for(int label = 2; label <= nLabels; ++label) { // with border
+    for(int label = 1; label <= nLabels; ++label) { //without border
 
         if (label < nLabels - 1) {
 
-            colors[label] = cv::Vec3b( dyeValue, 0.0, 0.0 ); // blue
+            colors[label] = cv::Vec3b( dyeValue_max, 0.0, 0.0 ); // blue
 
         } else {
 
-            colors[label] = cv::Vec3b( 0.0, 0.0, dyeValue ); // red
+            colors[label] = cv::Vec3b( 0.0, 0.0, dyeValue_max ); // red
 
         }
 
     }
 
+//    // dye the edges
+//#pragma omp parallel for
+//    for(int idy = 0; idy < dyedBGR.rows; ++idy){
+//
+//        for(int idx = 0; idx < dyedBGR.cols; ++idx){
+//
+//            int labelIdx = labels.at<int>(idy, idx);
+//            cv::Vec3b &pixel = dyedBGR.at<cv::Vec3b>(idy, idx);
+//            pixel = colors[labelIdx];
+//
+//        }
+//
+//    }
+
     // dye the edges
+    image.copyTo(dyedBGR); // copy the image to the dyedBGR
 #pragma omp parallel for
     for(int idy = 0; idy < dyedBGR.rows; ++idy){
 
@@ -100,7 +131,16 @@ void edge_dyeing(const sensor_msgs::ImageConstPtr &msg) {
 
             int labelIdx = labels.at<int>(idy, idx);
             cv::Vec3b &pixel = dyedBGR.at<cv::Vec3b>(idy, idx);
-            pixel = colors[labelIdx];
+
+            if(labelIdx == 1) { // leave the background
+
+                pixel = cv::Vec3b( dyeValue_max, 0.0, 0.0 ); // blue
+
+            } else if (labelIdx == 2) {
+
+                pixel = cv::Vec3b( 0.0, 0.0, dyeValue_max ); // red
+
+            }
 
         }
 
@@ -117,12 +157,12 @@ void edge_dyeing(const sensor_msgs::ImageConstPtr &msg) {
     ROS_INFO("[%s] Send as current", ros::this_node::getName().c_str());
     imagePublisher.publish(cvImage.toImageMsg());
 
-//    /**
-//     * Debug only
-//     */
-//    cv::namedWindow("Display window", cv::WINDOW_AUTOSIZE); // create a window for display.
-//    cv::imshow("Display window", dyedBGR); // show image
-//    cv::waitKey(0); // wait for a keystroke in the window
+    /**
+     * Debug only
+     */
+    cv::namedWindow("Current", cv::WINDOW_NORMAL); // create a window for display.
+    cv::imshow("Current", dyedBGR); // show image
+    cv::waitKey(0); // wait for a keystroke in the window
 
 }
 
@@ -135,7 +175,7 @@ int main(int argc, char *argv[]) {
 
     // ROS Topics
     node.param<string>("image_listener_topic", rosListenerTopicImg, "/image");
-    node.param<string>("dyed_image_publisher_topic", rosPublisherTopicImg, "/image/image_dyed");
+    node.param<string>("dyed_image_publisher_topic", rosPublisherTopicImg, "/image/image_current");
 
     // image transport setup
     image_transport::ImageTransport imageTransport(node);

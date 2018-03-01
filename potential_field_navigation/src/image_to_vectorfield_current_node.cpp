@@ -1,8 +1,8 @@
 // ============================================================================
-// Name        : image_to_vectorfield_node.cpp
+// Name        : image_to_vectorfield_current_node.cpp
 // Author      : Daniel Rudolph <drudolph@techfak.uni-bielefeld.de>
 //               Timo Korthals <tkorthals@cit-ec.uni-bielefeld.de>
-// Description : Receive a image and creates a vectorfield.
+// Description : Receive a image and creates a current vectorfield.
 // ============================================================================
 
 // ROS
@@ -39,6 +39,8 @@ static float heuristic_factor = 1.0f;
 static float heuristic_abs_min = 0.05f;
 static int heuristic_apply;
 
+uchar skipValue = 128;
+
 void process(const sensor_msgs::ImageConstPtr &msg) {
 
     cv::Mat image = cv_bridge::toCvShare(msg, msg->encoding)->image;
@@ -55,19 +57,24 @@ void process(const sensor_msgs::ImageConstPtr &msg) {
                                                                                             cv::Scalar(0.0f, 0.0f));
     cv::Mat vectorField(image.size(), CV_32FC2, cv::Scalar(0.0f, 0.0f));
 
+    ROS_INFO("dyedBGR.cols = %i, dyedBGR.rows = %i", image.cols, image.rows);
+    ROS_INFO("dyedBGR.cols = %i, dyedBGR.rows = %i", image.cols, image.rows);
+
     // Get a list of red and blue pixels
     std::vector<cv::Point> redPixel, bluePixel;
     for (int y = 0; y < image.rows; y++) {
 
         for (int x = 0; x < image.cols; x++) {
 
-            if (bgr[0].at<uchar>(y, x) > 0) {
+//            if (bgr[0].at<uchar>(y, x) > 0) {
+            if (bgr[0].at<uchar>(y, x) > skipValue) {
 
                 bluePixel.emplace_back(cv::Point(x, y));
 
             }
 
-            if (bgr[2].at<uchar>(y, x) > 0) {
+//            if (bgr[2].at<uchar>(y, x) > 0) {
+            if (bgr[2].at<uchar>(y, x) > skipValue) {
 
                 redPixel.emplace_back(cv::Point(x, y));
 
@@ -76,6 +83,9 @@ void process(const sensor_msgs::ImageConstPtr &msg) {
         }
 
     }
+
+    ROS_INFO("[%s] redPixel.size() = %i", ros::this_node::getName().c_str(), redPixel.size());
+    ROS_INFO("[%s] bluePixel.size() = %i", ros::this_node::getName().c_str(), bluePixel.size());
 
     if (redPixel.empty() && bluePixel.empty()) {
 
@@ -95,14 +105,14 @@ void process(const sensor_msgs::ImageConstPtr &msg) {
 
             for (int x = 0; x < bgr[0].cols; x++) {
 
-                if (it->y == y && it->x == x) {
-
+                if ((it->y == y && it->x == x) || bgr[0].at<uchar>(y, x) == skipValue) {
+//                if (it->y == y && it->x == x) {
                     continue;
 
                 }
 
                 // We assume an attracting (-) charge/current
-                potentialFieldBlue.at<float>(y, x) += -(value / 255.0f) / sqrt(pow(y - it->y, 2) + pow(x - it->x, 2));
+                potentialFieldBlue.at<float>(y, x) += -(value / 255.0f) / sqrt((y - it->y)*(y - it->y) + (x - it->x)*(x - it->x));
 
             }
 
@@ -121,14 +131,15 @@ void process(const sensor_msgs::ImageConstPtr &msg) {
 
             for (int x = 0; x < bgr[2].cols; x++) {
 
-                if (it->y == y && it->x == x) {
+                if ((it->y == y && it->x == x) || bgr[2].at<uchar>(y, x) == skipValue) {
+//                if (it->y == y && it->x == x) {
 
                     continue;
 
                 }
 
                 // We assume a repelling (+) charge/current
-                potentialFieldRed.at<float>(y, x) += (value / 255.0f) / sqrt(pow(y - it->y, 2) + pow(x - it->x, 2));
+                potentialFieldRed.at<float>(y, x) += (value / 255.0f) / sqrt((y - it->y)*(y - it->y) + (x - it->x)*(x - it->x));
 
             }
 
@@ -151,10 +162,6 @@ void process(const sensor_msgs::ImageConstPtr &msg) {
         // Get vector field
         vectorFieldRed = potentialfield_to_vectorfield(potentialFieldRed, true);
         vectorFieldBlue = potentialfield_to_vectorfield(potentialFieldBlue, true);
-
-        // Debug only
-        rot90(vectorFieldRed,1);
-        rot90(vectorFieldBlue,1);
 
     } else {
 
@@ -306,7 +313,7 @@ void process(const sensor_msgs::ImageConstPtr &msg) {
         // Subsum the vector fields
         cv::add(vectorFieldBlue, vectorFieldRed, vectorField);
 
-        ROS_INFO("[%s] Skip heuristics.", ros::this_node::getName().c_str());
+        ROS_INFO("[%s] Skip heuristics ...", ros::this_node::getName().c_str());
 
     }
 
@@ -330,6 +337,60 @@ void process(const sensor_msgs::ImageConstPtr &msg) {
         }
 
     }
+
+#pragma omp parallel for
+    for (int idy = 0; idy < vectorField.rows; idy++) { // rotate all vectors by 90 degree
+
+        for (int idx = 0; idx < vectorField.cols; idx++) {
+
+            float abs = cv::norm(vectorField.at<cv::Vec2f>(idy, idx));
+
+            if (abs > 0.0) {
+
+                float &x = vectorField.at<cv::Vec2f>(idy, idx)[0];
+                float &y = vectorField.at<cv::Vec2f>(idy, idx)[1];
+
+                float x_buffer = x;
+                float y_buffer = y;
+
+                x_buffer =  -1.0  * y;
+                y_buffer =  1.0 * x;
+
+                x = x_buffer;
+                y = y_buffer;
+
+            }
+
+        }
+    }
+
+    uchar valueB;
+    uchar valueR;
+#pragma omp parallel for
+    for (int idy = 0; idy < vectorField.rows; idy++) { // push all vectors on grey pixels to 0
+
+        for (int idx = 0; idx < vectorField.cols; idx++) {
+
+            valueB = bgr[0].at<uchar>(idy, idx); // check the blue channel
+            valueR = bgr[2].at<uchar>(idy, idx); // check the red channel
+
+            if (valueB > skipValue && valueR > skipValue) { // case white
+
+            } else { // every other case
+
+                float &x = vectorField.at<cv::Vec2f>(idy, idx)[0];
+                float &y = vectorField.at<cv::Vec2f>(idy, idx)[1];
+
+                x = 0.0;
+                y = 0.0;
+
+            }
+
+        }
+    }
+
+    ROS_INFO("vectorField.cols = %i, vectorField.rows = %i", vectorField.cols, vectorField.rows);
+    ROS_INFO("vectorField.cols = %i, vectorField.rows = %i", vectorField.cols, vectorField.rows);
 
     // Prepare data for publishing
     cv_bridge::CvImage cvImagePot;
@@ -359,9 +420,10 @@ int main(int argc, char *argv[]) {
 
     // ROS Topics
 //    node.param<string>("image_listener_topic", rosListenerTopic, "/image");
-    node.param<string>("image_listener_topic", rosListenerTopic, "/image/image_dyed");
+    node.param<string>("image_listener_topic", rosListenerTopic, "/image/image_current");
     node.param<string>("potentialfield_publisher_topic", rosPublisherTopicPot, "/image/potentialfield");
-    node.param<string>("vectorfield_publisher_topic", rosPublisherTopicVec, "/image/vectorfield");
+//    node.param<string>("vectorfield_publisher_topic", rosPublisherTopicVec, "/image/vectorfield");
+    node.param<string>("vectorfield_publisher_topic", rosPublisherTopicVec, "\"/vectorfield/final_image_current\"");
     node.param<int>("heuristic_apply", heuristic_apply, 0);
     node.param<float>("heuristic_factor", heuristic_factor, 1.0);
     node.param<float>("heuristic_abs_min", heuristic_abs_min, 1.0);
