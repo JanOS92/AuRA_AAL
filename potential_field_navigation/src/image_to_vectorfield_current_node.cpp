@@ -61,22 +61,29 @@ void process(const sensor_msgs::ImageConstPtr &msg) {
     ROS_INFO("dyedBGR.cols = %i, dyedBGR.rows = %i", image.cols, image.rows);
 
     // Get a list of red and blue pixels
-    std::vector<cv::Point> redPixel, bluePixel;
+    std::vector<cv::Point> redPixel, bluePixel, mvPixel;
+    //ToDo: mvPixel implementation!
     for (int y = 0; y < image.rows; y++) {
 
         for (int x = 0; x < image.cols; x++) {
 
 //            if (bgr[0].at<uchar>(y, x) > 0) {
-            if (bgr[0].at<uchar>(y, x) > skipValue) {
+            if (bgr[0].at<uchar>(y, x) > skipValue && !(bgr[2].at<uchar>(y, x) > skipValue)) { // get only blue pixels
 
                 bluePixel.emplace_back(cv::Point(x, y));
 
             }
 
 //            if (bgr[2].at<uchar>(y, x) > 0) {
-            if (bgr[2].at<uchar>(y, x) > skipValue) {
+            if (bgr[2].at<uchar>(y, x) > skipValue && !(bgr[0].at<uchar>(y, x) > skipValue)) { // get only red pixels
 
                 redPixel.emplace_back(cv::Point(x, y));
+
+            }
+
+            if(bgr[2].at<uchar>(y, x) > skipValue || bgr[0].at<uchar>(y, x) > skipValue) { // get blue, red or white pixels
+
+                mvPixel.emplace_back(cv::Point(x, y));
 
             }
 
@@ -95,18 +102,20 @@ void process(const sensor_msgs::ImageConstPtr &msg) {
 
     // Calculate normalized potential field for the blue channel
     // TODO Differentiate between Charge and Current, because charge as no sqrt in the denominator
+#pragma omp parallel for
     for (auto it = bluePixel.begin(); it < bluePixel.end(); ++it) {
 
         const uchar value = bgr[0].at<uchar>(it->y, it->x);
 
-#pragma omp parallel for
+        for (auto it_mv = mvPixel.begin(); it_mv < mvPixel.end(); ++it_mv) {
 
-        for (int y = 0; y < bgr[0].rows; y++) {
+            int y = it_mv->y;
+            int x = it_mv->x;
 
-            for (int x = 0; x < bgr[0].cols; x++) {
+//            for (int x = 0; x < bgr[0].cols; x++) {
 
-                if ((it->y == y && it->x == x) || bgr[0].at<uchar>(y, x) == skipValue) {
-//                if (it->y == y && it->x == x) {
+//                if ((it->y == y && it->x == x) || bgr[0].at<uchar>(y, x) == skipValue) {
+                if (it->y == y && it->x == x) {
                     continue;
 
                 }
@@ -114,25 +123,27 @@ void process(const sensor_msgs::ImageConstPtr &msg) {
                 // We assume an attracting (-) charge/current
                 potentialFieldBlue.at<float>(y, x) += -(value / 255.0f) / sqrt((y - it->y)*(y - it->y) + (x - it->x)*(x - it->x));
 
-            }
+//            }
 
         }
 
     }
 
     // Calculate normalized potential field for the red channel
+#pragma omp parallel for
     for (auto it = redPixel.begin(); it < redPixel.end(); ++it) {
 
         const uchar value = bgr[2].at<uchar>(it->y, it->x);
 
-#pragma omp parallel for
+        for (auto it_mv = mvPixel.begin(); it_mv < mvPixel.end(); ++it_mv) {
 
-        for (int y = 0; y < bgr[2].rows; y++) {
+            int y = it_mv->y;
+            int x = it_mv->x;
 
-            for (int x = 0; x < bgr[2].cols; x++) {
+//            for (int x = 0; x < bgr[2].cols; x++) {
 
-                if ((it->y == y && it->x == x) || bgr[2].at<uchar>(y, x) == skipValue) {
-//                if (it->y == y && it->x == x) {
+//                if ((it->y == y && it->x == x) || bgr[2].at<uchar>(y, x) == skipValue) {
+                if (it->y == y && it->x == x) {
 
                     continue;
 
@@ -141,7 +152,7 @@ void process(const sensor_msgs::ImageConstPtr &msg) {
                 // We assume a repelling (+) charge/current
                 potentialFieldRed.at<float>(y, x) += (value / 255.0f) / sqrt((y - it->y)*(y - it->y) + (x - it->x)*(x - it->x));
 
-            }
+//            }
 
         }
 
@@ -170,6 +181,73 @@ void process(const sensor_msgs::ImageConstPtr &msg) {
 
     }
 
+//    // create deep copies of the vectorfields
+//    cv::Mat vectorFieldRed_norm(image.size(), CV_32FC2, cv::Scalar(0.0f, 0.0f));
+//    cv::Mat vectorFieldBlue_norm(image.size(), CV_32FC2, cv::Scalar(0.0f, 0.0f));
+//    cv::Mat vectorField_norm(image.size(), CV_32FC2, cv::Scalar(0.0f, 0.0f));
+//
+//    vectorFieldRed.copyTo(vectorFieldRed_norm);
+//    vectorFieldBlue.copyTo(vectorFieldBlue_norm);
+//    vectorField.copyTo(vectorField_norm);
+//
+//#pragma omp parallel for
+//    for (int idy = 0; idy < vectorField.rows; idy++) { // rotate all vectors by 90 degree
+//
+//        for (int idx = 0; idx < vectorField.cols; idx++) {
+//
+//            float abs = cv::norm(vectorFieldRed_norm.at<cv::Vec2f>(idy, idx));
+//
+//            if (abs > 0.0) {
+//
+//                float &xRed = vectorFieldRed_norm.at<cv::Vec2f>(idy, idx)[0];
+//                float &yRed = vectorFieldRed_norm.at<cv::Vec2f>(idy, idx)[1];
+//
+//                float x_buffer = xRed;
+//                float y_buffer = yRed;
+//
+//                // rotate by +pi/2
+//                x_buffer =  -1.0  * yRed;
+//                y_buffer =  1.0 * xRed;
+//
+//                // set magnitude to 1
+//                x_buffer = x_buffer / abs;
+//                y_buffer = y_buffer / abs;
+//
+//                xRed = x_buffer;
+//                yRed = y_buffer;
+//
+//            }
+//
+//            abs = cv::norm(vectorFieldBlue_norm.at<cv::Vec2f>(idy, idx));
+//
+//            if (abs > 0.0) {
+//
+//                float &xBlue = vectorFieldBlue_norm.at<cv::Vec2f>(idy, idx)[0];
+//                float &yBlue = vectorFieldBlue_norm.at<cv::Vec2f>(idy, idx)[1];
+//
+//                float x_buffer = xBlue;
+//                float y_buffer = yBlue;
+//
+//                // rotate by +pi/2
+//                x_buffer =  -1.0  * yBlue;
+//                y_buffer =  1.0 * xBlue;
+//
+//                // set magnitude to 1
+//                x_buffer = x_buffer / abs;
+//                y_buffer = y_buffer / abs;
+//
+//                xBlue = x_buffer;
+//                yBlue = y_buffer;
+//
+//            }
+//
+//        }
+//    }
+//
+//    // merge the normalized vectorfields
+//    cv::add(vectorFieldRed_norm, vectorFieldBlue_norm, vectorField_norm);
+
+
     // Apply heuristics (S.t. calculate the motor schema)
     if (heuristic_apply) {
 
@@ -180,7 +258,6 @@ void process(const sensor_msgs::ImageConstPtr &msg) {
             cv::add(vectorFieldRed, vectorFieldBlue, vectorField);
 
 #pragma omp parallel for
-
             for (int idy = 0; idy < vectorField.rows; idy++) {
 
                 for (int idx = 0; idx < vectorField.cols; idx++) {
@@ -220,47 +297,45 @@ void process(const sensor_msgs::ImageConstPtr &msg) {
             if (!bluePixel.empty()) {
 
 #pragma omp parallel for
+        for (int idy = 0; idy < vectorFieldBlue.rows; idy++) {
 
-                for (int idy = 0; idy < vectorFieldBlue.rows; idy++) {
+            for (int idx = 0; idx < vectorFieldBlue.cols; idx++) {
 
-                    for (int idx = 0; idx < vectorFieldBlue.cols; idx++) {
+                float &x = vectorFieldBlue.at<cv::Vec2f>(idy, idx)[0];
+                float &y = vectorFieldBlue.at<cv::Vec2f>(idy, idx)[1];
+                float abs = cv::norm(vectorFieldBlue.at<cv::Vec2f>(idy, idx));
 
-                        float &x = vectorFieldBlue.at<cv::Vec2f>(idy, idx)[0];
-                        float &y = vectorFieldBlue.at<cv::Vec2f>(idy, idx)[1];
-                        float abs = cv::norm(vectorFieldBlue.at<cv::Vec2f>(idy, idx));
+                // Remove value if on charge
+                if (bgr[0].at<uchar>(idy, idx) > 0) {
 
-                        // Remove value if on charge
-                        if (bgr[0].at<uchar>(idy, idx) > 0) {
+                    x = 0.0f;
+                    y = 0.0f;
 
-                            x = 0.0f;
-                            y = 0.0f;
+                } else if (abs < heuristic_abs_min) { // Keep vector which are far away constant
 
-                        } else if (abs < heuristic_abs_min) { // Keep vector which are far away constant
+                    const float factor = heuristic_factor;
+                    x = factor * x / abs;
+                    y = factor * y / abs;
 
-                            const float factor = heuristic_factor;
-                            x = factor * x / abs;
-                            y = factor * y / abs;
+                } else {  // Degenerate vector as closer they are to the charge
 
-                        } else {  // Degenerate vector as closer they are to the charge
-
-                            const float factor = heuristic_factor * heuristic_abs_min / abs;
-                            x = factor * x / abs;
-                            y = factor * y / abs;
-
-                        }
-
-                    }
+                    const float factor = heuristic_factor * heuristic_abs_min / abs;
+                    x = factor * x / abs;
+                    y = factor * y / abs;
 
                 }
 
             }
+
+        }
+
+    }
 
             // Schema for repelling charge with velocities which become
             // stronger with closer distance to the charge
             if (!redPixel.empty()) {
 
 #pragma omp parallel for
-
                 for (int idy = 0; idy < vectorFieldRed.rows; idy++) {
 
                     for (int idx = 0; idx < vectorFieldRed.cols; idx++) {
@@ -389,8 +464,27 @@ void process(const sensor_msgs::ImageConstPtr &msg) {
         }
     }
 
-    ROS_INFO("vectorField.cols = %i, vectorField.rows = %i", vectorField.cols, vectorField.rows);
-    ROS_INFO("vectorField.cols = %i, vectorField.rows = %i", vectorField.cols, vectorField.rows);
+//#pragma omp parallel for
+//    for (int idy = 0; idy < vectorField_norm.rows; idy++) { // clean up the vectorfield
+//
+//        for (int idx = 0; idx < vectorField_norm.cols; idx++) {
+//
+//            float absNorm = cv::norm(vectorField_norm.at<cv::Vec2f>(idy, idx));
+//
+//            if (absNorm == 0) {
+//
+//                ROS_INFO("(Clean) idx = %i, idy = %i", idx , idy);
+//
+//                float &x = vectorField.at<cv::Vec2f>(idy, idx)[0];
+//                float &y = vectorField.at<cv::Vec2f>(idy, idx)[1];
+//
+//                x = 0.0;
+//                y = 0.0;
+//
+//            }
+//
+//        }
+//    }
 
     // Prepare data for publishing
     cv_bridge::CvImage cvImagePot;

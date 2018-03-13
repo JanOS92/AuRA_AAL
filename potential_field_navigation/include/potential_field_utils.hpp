@@ -288,6 +288,7 @@ potentialfield_to_vectorfield(const cv::Mat &potentialField,
 
     } else {
 
+//        cv::Scharr(potentialField, vectorFieldX, ddepth, 1, 0, -1.0, delta, borderType);
         cv::Scharr(potentialField, vectorFieldX, ddepth, 1, 0, -1.0, delta, borderType);
         cv::Scharr(potentialField, vectorFieldY, ddepth, 0, 1, 1.0, delta, borderType);
 

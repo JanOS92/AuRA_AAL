@@ -64,12 +64,49 @@ void edge_dyeing(const sensor_msgs::ImageConstPtr &msg) {
     /**
     * Edge extraction simple
     */
-//    cv::Mat edgeMap(image_gray.rows, image_gray.cols, CV_32FC2, cv::Scalar(0.0f));
     cv::Mat inv;
-//    cv::Mat thres;
     cv::Mat image_binary(image_gray.size(), image_gray.type());
     cv::bitwise_not ( image_gray, inv ); // invert the colors
     cv::threshold( inv, image_binary, 129, 255, cv::THRESH_BINARY);
+
+    cv::Mat inv_sharpend;
+    cv::GaussianBlur(image_binary, inv_sharpend, cv::Size(0, 0), 1); // cv::Size(0, 0): kernel size depends on sigmaX
+//    cv::addWeighted(image_binary, 1.5, inv_sharpend, -0.5, 0, inv_sharpend);
+
+    cv::Mat whiteMap(image_gray.size(), image_gray.type(), cv::Scalar(0.0f));
+#pragma omp parallel for
+    for (int y = 0; y < image.rows; y++) {
+
+        for (int x = 0; x < image.cols; x++) {
+
+            uchar value = inv_sharpend.at<uchar>(y,x);
+
+            if(value < 30 && value > 0) {
+
+                image_binary.at<uchar>(y,x) = 255;
+
+            } else if(value > 0) {
+
+                whiteMap.at<uchar>(y,x) = 255;
+                image_binary.at<uchar>(y,x) = 0;
+
+            } else {
+
+                image_binary.at<uchar>(y,x) = 0;
+
+            }
+
+
+        }
+
+    }
+
+//    /**
+//     * Debug only
+//     */
+//    cv::namedWindow("whiteMap", cv::WINDOW_NORMAL); // create a window for display.
+//    cv::imshow("whiteMap", whiteMap); // show image
+//    cv::waitKey(0); // wait for a keystroke in the window
 
     /**
      * Edge clustering
@@ -88,25 +125,25 @@ void edge_dyeing(const sensor_msgs::ImageConstPtr &msg) {
     cv::Vec3b gray = cv::Vec3b( dyeValue_half, dyeValue_half, dyeValue_half );
     cv::Vec3b black = cv::Vec3b( 0.0, 0.0, 0.0 );
 
-    std::vector<cv::Vec3b> colors(nLabels);
-    colors[0] = black; // set background value
+//    std::vector<cv::Vec3b> colors(nLabels);
+//    colors[0] = black; // set background value
 
     ROS_INFO("nLabels = %i", nLabels);
 
 //    for(int label = 2; label <= nLabels; ++label) { // with border
-    for(int label = 1; label <= nLabels; ++label) { //without border
-
-        if (label < nLabels - 1) {
-
-            colors[label] = cv::Vec3b( dyeValue_max, 0.0, 0.0 ); // blue
-
-        } else {
-
-            colors[label] = cv::Vec3b( 0.0, 0.0, dyeValue_max ); // red
-
-        }
-
-    }
+//    for(int label = 1; label <= nLabels; ++label) { //without border
+//
+//        if (label < nLabels - 1) {
+//
+//            colors[label] = cv::Vec3b( dyeValue_max, 0.0, 0.0 ); // blue
+//
+//        } else {
+//
+//            colors[label] = cv::Vec3b( 0.0, 0.0, dyeValue_max ); // red
+//
+//        }
+//
+//    }
 
 //    // dye the edges
 //#pragma omp parallel for
@@ -139,6 +176,14 @@ void edge_dyeing(const sensor_msgs::ImageConstPtr &msg) {
             } else if (labelIdx == 2) {
 
                 pixel = cv::Vec3b( 0.0, 0.0, dyeValue_max ); // red
+
+            } else {
+
+                if(whiteMap.at<uchar>(idy,idx) > 0) { // burn the whiteMap in
+
+                    pixel = cv::Vec3b(dyeValue_max,dyeValue_max,dyeValue_max); // white
+
+                }
 
             }
 

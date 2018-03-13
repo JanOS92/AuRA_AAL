@@ -71,11 +71,11 @@ int main(int argc, char *argv[]) {
 //    node.param<string>("vectorfield_publisher_topic", vectorfieldPublisherTopic, "/vectorfield/fused");
     node.param<string>("vectorfield_publisher_topic", vectorfieldPublisherTopic, "/vectorfield/final_image");
 //    node.param<int>("field_width", fieldWidth, 1000);
-    node.param<int>("field_width", fieldWidth, 204);
+    node.param<int>("field_width", fieldWidth, 2000);
 //    node.param<int>("field_height", fieldHeight, 1000);
-    node.param<int>("field_height", fieldHeight, 256);
+    node.param<int>("field_height", fieldHeight, 2000);
 //    node.param<int>("normalize", normalize, 0);
-    node.param<int>("normalize", normalize, 0);
+    node.param<int>("normalize", normalize, 1);
     node.param<float>("rate", rate, 1);
 
     // Initialize

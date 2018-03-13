@@ -58,22 +58,28 @@ void process(const sensor_msgs::ImageConstPtr &msg) {
     cv::Mat vectorField(image.size(), CV_32FC2, cv::Scalar(0.0f, 0.0f));
 
     // Get a list of red and blue pixels
-    std::vector<cv::Point> redPixel, bluePixel;
+    std::vector<cv::Point> redPixel, bluePixel, mvPixel;
     for (int y = 0; y < image.rows; y++) {
 
         for (int x = 0; x < image.cols; x++) {
 
 //            if (bgr[0].at<uchar>(y, x) > 0) {
-            if (bgr[0].at<uchar>(y, x) > skipValue) {
+            if (bgr[0].at<uchar>(y, x) > skipValue && !(bgr[2].at<uchar>(y, x) > skipValue)) { // get only blue pixels
 
                 bluePixel.emplace_back(cv::Point(x, y));
 
             }
 
 //            if (bgr[2].at<uchar>(y, x) > 0) {
-            if (bgr[2].at<uchar>(y, x) > skipValue) {
+            if (bgr[2].at<uchar>(y, x) > skipValue && !(bgr[0].at<uchar>(y, x) > skipValue)) { // get only red pixels
 
                 redPixel.emplace_back(cv::Point(x, y));
+
+            }
+
+            if(bgr[2].at<uchar>(y, x) > skipValue || bgr[0].at<uchar>(y, x) > skipValue) { // get blue, red or white pixels
+
+                mvPixel.emplace_back(cv::Point(x, y));
 
             }
 
@@ -92,16 +98,20 @@ void process(const sensor_msgs::ImageConstPtr &msg) {
 
     // Calculate normalized potential field for the blue channel
     // TODO Differentiate between Charge and Current, because charge as no sqrt in the denominator
-
     for (auto it = bluePixel.begin(); it < bluePixel.end(); ++it) {
 
         const uchar value = bgr[0].at<uchar>(it->y, it->x);
 
 #pragma omp parallel for
 
-        for (int y = 0; y < bgr[0].rows; y++) {
+//        for (int y = 0; y < bgr[0].rows; y++) {
 
-            for (int x = 0; x < bgr[0].cols; x++) {
+        for (auto it_mv = mvPixel.begin(); it_mv < mvPixel.end(); ++it_mv) {
+
+            int y = it_mv->y;
+            int x = it_mv->x;
+
+//            for (int x = 0; x < bgr[0].cols; x++) {
 
                 if ((it->y == y && it->x == x) || bgr[0].at<uchar>(y, x) == skipValue) {
 //                if (it->y == y && it->x == x) {
@@ -114,7 +124,7 @@ void process(const sensor_msgs::ImageConstPtr &msg) {
 //                potentialFieldBlue.at<float>(y, x) += -(value / 255.0f) / sqrt(pow(y - it->y, 2) + pow(x - it->x, 2));
                 potentialFieldBlue.at<float>(y, x) += -(value / 255.0f) / sqrt((y - it->y)*(y - it->y) + (x - it->x)*(x - it->x));
 
-            }
+//            }
 
         }
 
@@ -127,9 +137,14 @@ void process(const sensor_msgs::ImageConstPtr &msg) {
 
 #pragma omp parallel for
 
-        for (int y = 0; y < bgr[2].rows; y++) {
+//        for (int y = 0; y < bgr[2].rows; y++) {
 
-            for (int x = 0; x < bgr[2].cols; x++) {
+        for (auto it_mv = mvPixel.begin(); it_mv < mvPixel.end(); ++it_mv) {
+
+            int y = it_mv->y;
+            int x = it_mv->x;
+
+//            for (int x = 0; x < bgr[2].cols; x++) {
 
                 if ((it->y == y && it->x == x) || bgr[2].at<uchar>(y, x) == skipValue) {
 //                if (it->y == y && it->x == x) {
@@ -142,7 +157,7 @@ void process(const sensor_msgs::ImageConstPtr &msg) {
 //                potentialFieldRed.at<float>(y, x) += (value / 255.0f) / sqrt(pow(y - it->y, 2) + pow(x - it->x, 2));
                 potentialFieldRed.at<float>(y, x) += (value / 255.0f) / sqrt((y - it->y)*(y - it->y) + (x - it->x)*(x - it->x));
 
-            }
+//            }
 
         }
 
@@ -320,7 +335,60 @@ void process(const sensor_msgs::ImageConstPtr &msg) {
 
     }
 
-    ROS_INFO("[4]");
+//    if(heuristic_apply) {
+//#pragma omp parallel for
+//        for (int idy = 0; idy < vectorField.rows; idy++) { // rotate all vectors by 180 degree (only for center on line schema!)
+//
+//            for (int idx = 0; idx < vectorField.cols; idx++) {
+//
+//                float abs = cv::norm(vectorField.at<cv::Vec2f>(idy, idx));
+//
+//                if (abs > 0.0) {
+//
+//                    float &x = vectorField.at<cv::Vec2f>(idy, idx)[0];
+//                    float &y = vectorField.at<cv::Vec2f>(idy, idx)[1];
+//
+//                    float x_buffer = x;
+//                    float y_buffer = y;
+//
+//                    x_buffer = -1.0 * x;
+//                    y_buffer = -1.0 * y;
+//
+//                    x = x_buffer;
+//                    y = y_buffer;
+//
+//                }
+//
+//            }
+//        }
+//    }
+
+    if(heuristic_apply) {
+        uchar valueB;
+        uchar valueR;
+#pragma omp parallel for
+        for (int idy = 0; idy < vectorField.rows; idy++) { // push all vectors on grey pixels to 0
+
+            for (int idx = 0; idx < vectorField.cols; idx++) {
+
+                valueB = bgr[0].at<uchar>(idy, idx); // check the blue channel
+                valueR = bgr[2].at<uchar>(idy, idx); // check the red channel
+
+                if (valueB > skipValue && valueR > skipValue) { // case white
+
+                } else { // every other case
+
+                    float &x = vectorField.at<cv::Vec2f>(idy, idx)[0];
+                    float &y = vectorField.at<cv::Vec2f>(idy, idx)[1];
+
+                    x = 0.0;
+                    y = 0.0;
+
+                }
+
+            }
+        }
+    }
 
     // Sanity check for vectorfield size
     if (desired_vectorfield_width > 0 && desired_vectorfield_height > 0) {
@@ -343,26 +411,26 @@ void process(const sensor_msgs::ImageConstPtr &msg) {
 
     }
 
-    // push all vectors on grey pixels to 0
-    uchar value;
-#pragma omp parallel for
-    for (int idy = 0; idy < vectorField.rows; idy++) { // rotate all vectors by 90 degree
-
-        for (int idx = 0; idx < vectorField.cols; idx++) {
-
-            value = bgr[0].at<uchar>(idy, idx); // check the blue channel
-
-            if (value == skipValue) {
-
-                float &x = vectorField.at<cv::Vec2f>(idy, idx)[0];
-                float &y = vectorField.at<cv::Vec2f>(idy, idx)[1];
-                x = 0.0;
-                y = 0.0;
-
-            }
-
-        }
-    }
+//    // push all vectors on grey pixels to 0
+//    uchar value;
+//#pragma omp parallel for
+//    for (int idy = 0; idy < vectorField.rows; idy++) { // rotate all vectors by 90 degree
+//
+//        for (int idx = 0; idx < vectorField.cols; idx++) {
+//
+//            value = bgr[0].at<uchar>(idy, idx); // check the blue channel
+//
+//            if (value == skipValue) {
+//
+//                float &x = vectorField.at<cv::Vec2f>(idy, idx)[0];
+//                float &y = vectorField.at<cv::Vec2f>(idy, idx)[1];
+//                x = 0.0;
+//                y = 0.0;
+//
+//            }
+//
+//        }
+//    }
 
     ROS_INFO("vectorField.cols = %i, vectorField.rows = %i", vectorField.cols, vectorField.rows);
     ROS_INFO("vectorField.cols = %i, vectorField.rows = %i", vectorField.cols, vectorField.rows);
