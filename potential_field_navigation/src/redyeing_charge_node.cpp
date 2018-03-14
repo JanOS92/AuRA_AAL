@@ -47,8 +47,7 @@ void dyeing_charge(const sensor_msgs::ImageConstPtr &msg) {
      * Initial image routine
      */
     image = cv_bridge::toCvShare(msg, msg->encoding)->image; // get the image from the msg pointer
-    cv::cvtColor(image,image_gray, cv::COLOR_RGB2GRAY); // convert the rgb image into grayscale image
-
+    cv::cvtColor(image, image_gray, cv::COLOR_RGB2GRAY); // convert the rgb image into grayscale image
 
     /**
      * ---------------------
@@ -146,32 +145,32 @@ void dyeing_charge(const sensor_msgs::ImageConstPtr &msg) {
      */
     cv::Mat inv;
     cv::Mat image_binary(image_gray.size(), image_gray.type());
-    cv::bitwise_not ( image_gray, inv ); // invert the colors
-    cv::threshold( inv, image_binary, 129, 255, cv::THRESH_BINARY);
+    cv::bitwise_not(image_gray, inv); // invert the colors
+    cv::threshold(inv, image_binary, 129, 255, cv::THRESH_BINARY);
 
-    int kernelSizeX = image.cols/20;
-    int kernelSizeY = image.rows/20;
+    int kernelSizeX = image.cols / 40;
+    int kernelSizeY = image.rows / 40;
 
-    cv::Mat whiteMap(image_gray.size(), image_gray.type(),cv::Scalar(0.0f, 0.0f));
+    cv::Mat whiteMap(image_gray.size(), image_gray.type(), cv::Scalar(0.0f, 0.0f));
 
 #pragma omp parallel for
-    for(int idy = 0; idy < image_binary.rows; ++idy) {  // broaden the line
+    for (int idy = 0; idy < image_binary.rows; ++idy) {  // broaden the line
 
-        for(int idx = 0; idx < image_binary.cols; ++idx) {
+        for (int idx = 0; idx < image_binary.cols; ++idx) {
 
-            uchar value = image_binary.at<uchar>(idy,idx);
+            uchar value = image_binary.at<uchar>(idy, idx);
 
-            if(value == 255) { // case white
+            if (value == 255) { // case white
 
-                for(int idy_kernel = 0; idy_kernel < kernelSizeY; ++idy_kernel) {
+                for (int idy_kernel = 0; idy_kernel < kernelSizeY; ++idy_kernel) {
 
-                    int y_dye = (idy - kernelSizeY/2) + idy_kernel;
+                    int y_dye = (idy - kernelSizeY / 2) + idy_kernel;
 
-                    for(int idx_kernel = 0; idx_kernel < kernelSizeX; ++idx_kernel) {
+                    for (int idx_kernel = 0; idx_kernel < kernelSizeX; ++idx_kernel) {
 
-                        int x_dye = (idx - kernelSizeX/2) + idx_kernel;
+                        int x_dye = (idx - kernelSizeX / 2) + idx_kernel;
 
-                        uchar &valueWhiteMap = whiteMap.at<uchar>(y_dye,x_dye);
+                        uchar &valueWhiteMap = whiteMap.at<uchar>(y_dye, x_dye);
 
                         valueWhiteMap = 255;
 
@@ -185,10 +184,17 @@ void dyeing_charge(const sensor_msgs::ImageConstPtr &msg) {
 
     }
 
+//    /**
+//    * Debug only
+//    */
+//    cv::namedWindow("whiteMap", cv::WINDOW_NORMAL); // create a window for display.
+//    cv::imshow("whiteMap", whiteMap); // show image
+//    cv::waitKey(0); // wait for a keystroke in the window
+
     /**
     * Redyeing
     */
-    cv::Mat dyedBGR(image.rows, image.cols, CV_8UC3, cv::Scalar(0,0,0));
+    cv::Mat dyedBGR(image.rows, image.cols, CV_8UC3, cv::Scalar(0, 0, 0));
 
     float dyeValue_max = 255;
     float dyeValue_half = 128;
@@ -196,23 +202,42 @@ void dyeing_charge(const sensor_msgs::ImageConstPtr &msg) {
     cv::Vec3b red;
     cv::Vec3b gray;
     cv::Vec3b white;
-    blue = cv::Vec3b( dyeValue_max, 0, 0 );
-    red = cv::Vec3b( 0, 0, dyeValue_max );
-    gray = cv::Vec3b( dyeValue_half, dyeValue_half, dyeValue_half );
-    white = cv::Vec3b( 255, 255, 255 );
+    blue = cv::Vec3b(dyeValue_max, 0, 0);
+    red = cv::Vec3b(0, 0, dyeValue_max);
+    gray = cv::Vec3b(dyeValue_half, dyeValue_half, dyeValue_half);
+    white = cv::Vec3b(255, 255, 255);
 
 #pragma omp parallel for
-    for(int idy = 0; idy < dyedBGR.rows; ++idy){  // redye the image for charge
+    for (int idy = 0; idy < dyedBGR.rows; ++idy) {  // redye the image for charge
 
-        for(int idx = 0; idx < dyedBGR.cols; ++idx){
+        for (int idx = 0; idx < dyedBGR.cols; ++idx) {
 
             cv::Vec3b &pixel = dyedBGR.at<cv::Vec3b>(idy, idx);
 
-            if(image_binary.at<uchar>(idy, idx) > 0) {
+// best option
+//            if (image_binary.at<uchar>(idy, idx) > 0) { // mind the hierarchy!
+//
+//                pixel = blue;
+//
+//            } else if (image_gray.at<uchar>(idy, idx) == dyeValue_max) {
+//
+//                pixel = gray;
+//
+//            } else if (whiteMap.at<uchar>(idy, idx) > 0) {
+//
+//                pixel = white;
+//
+//            } else {
+//
+//                pixel = gray;
+//
+//            }
+
+            if (image_gray.at<uchar>(idy, idx) >= 240) { // mind the hierarchy!
 
                 pixel = blue;
 
-            } else if (whiteMap.at<uchar>(idy,idx) > 0) {
+            } else if (whiteMap.at<uchar>(idy, idx) > 0) {
 
                 pixel = white;
 
@@ -225,7 +250,6 @@ void dyeing_charge(const sensor_msgs::ImageConstPtr &msg) {
         }
 
     }
-
 
     /**
     * Publish dyedBGR

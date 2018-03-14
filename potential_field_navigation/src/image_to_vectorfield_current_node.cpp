@@ -267,7 +267,8 @@ void process(const sensor_msgs::ImageConstPtr &msg) {
                     float abs = cv::norm(vectorField.at<cv::Vec2f>(idy, idx));
 
                     // Remove value if on charge
-                    if (bgr[0].at<uchar>(idy, idx) > 0 || bgr[2].at<uchar>(idy, idx) > 0) {
+//                    if (bgr[0].at<uchar>(idy, idx) > 0 || bgr[2].at<uchar>(idy, idx) > 0) {
+                    if ((bgr[0].at<uchar>(idy, idx) > 0 || bgr[2].at<uchar>(idy, idx) > 0) && bgr[1].at<uchar>(idy, idx) == 0) { // only red and blue pixels
 
                         x = 0.0f;
                         y = 0.0f;

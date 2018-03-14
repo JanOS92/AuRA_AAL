@@ -77,7 +77,8 @@ void process(const sensor_msgs::ImageConstPtr &msg) {
 
             }
 
-            if(bgr[2].at<uchar>(y, x) > skipValue || bgr[0].at<uchar>(y, x) > skipValue) { // get blue, red or white pixels
+            if (bgr[2].at<uchar>(y, x) > skipValue ||
+                bgr[0].at<uchar>(y, x) > skipValue) { // get blue, red or white pixels
 
                 mvPixel.emplace_back(cv::Point(x, y));
 
@@ -113,16 +114,17 @@ void process(const sensor_msgs::ImageConstPtr &msg) {
 
 //            for (int x = 0; x < bgr[0].cols; x++) {
 
-                if ((it->y == y && it->x == x) || bgr[0].at<uchar>(y, x) == skipValue) {
+            if ((it->y == y && it->x == x) || bgr[0].at<uchar>(y, x) == skipValue) {
 //                if (it->y == y && it->x == x) {
 
-                    continue;
+                continue;
 
-                }
+            }
 
-                // We assume an attracting (-) charge/current
+            // We assume an attracting (-) charge/current
 //                potentialFieldBlue.at<float>(y, x) += -(value / 255.0f) / sqrt(pow(y - it->y, 2) + pow(x - it->x, 2));
-                potentialFieldBlue.at<float>(y, x) += -(value / 255.0f) / sqrt((y - it->y)*(y - it->y) + (x - it->x)*(x - it->x));
+            potentialFieldBlue.at<float>(y, x) +=
+                    -(value / 255.0f) / sqrt((y - it->y) * (y - it->y) + (x - it->x) * (x - it->x));
 
 //            }
 
@@ -146,16 +148,17 @@ void process(const sensor_msgs::ImageConstPtr &msg) {
 
 //            for (int x = 0; x < bgr[2].cols; x++) {
 
-                if ((it->y == y && it->x == x) || bgr[2].at<uchar>(y, x) == skipValue) {
+            if ((it->y == y && it->x == x) || bgr[2].at<uchar>(y, x) == skipValue) {
 //                if (it->y == y && it->x == x) {
 
-                    continue;
+                continue;
 
-                }
+            }
 
-                // We assume a repelling (+) charge/current
+            // We assume a repelling (+) charge/current
 //                potentialFieldRed.at<float>(y, x) += (value / 255.0f) / sqrt(pow(y - it->y, 2) + pow(x - it->x, 2));
-                potentialFieldRed.at<float>(y, x) += (value / 255.0f) / sqrt((y - it->y)*(y - it->y) + (x - it->x)*(x - it->x));
+            potentialFieldRed.at<float>(y, x) +=
+                    (value / 255.0f) / sqrt((y - it->y) * (y - it->y) + (x - it->x) * (x - it->x));
 
 //            }
 
@@ -248,7 +251,8 @@ void process(const sensor_msgs::ImageConstPtr &msg) {
                         float abs = cv::norm(vectorFieldBlue.at<cv::Vec2f>(idy, idx));
 
                         // Remove value if on charge
-                        if (bgr[0].at<uchar>(idy, idx) > 0) {
+//                        if (bgr[0].at<uchar>(idy, idx) > 0) {
+                        if (bgr[0].at<uchar>(idy, idx) > 0 && bgr[2].at<uchar>(idy, idx) == 0) { // only blue pixels
 
                             x = 0.0f;
                             y = 0.0f;
@@ -288,7 +292,8 @@ void process(const sensor_msgs::ImageConstPtr &msg) {
                         float abs = cv::norm(vectorFieldRed.at<cv::Vec2f>(idy, idx));
 
                         // Normalize value if on charge
-                        if (bgr[2].at<uchar>(idy, idx) > 0) {
+//                        if (bgr[2].at<uchar>(idy, idx) > 0) {
+                        if (bgr[2].at<uchar>(idy, idx) > 0 && bgr[0].at<uchar>(idy, idx) == 0) { // only red pixels
 
                             const float factor = heuristic_factor;
                             x = factor * x / abs;
@@ -335,35 +340,34 @@ void process(const sensor_msgs::ImageConstPtr &msg) {
 
     }
 
-//    if(heuristic_apply) {
-//#pragma omp parallel for
-//        for (int idy = 0; idy < vectorField.rows; idy++) { // rotate all vectors by 180 degree (only for center on line schema!)
-//
-//            for (int idx = 0; idx < vectorField.cols; idx++) {
-//
-//                float abs = cv::norm(vectorField.at<cv::Vec2f>(idy, idx));
-//
-//                if (abs > 0.0) {
-//
-//                    float &x = vectorField.at<cv::Vec2f>(idy, idx)[0];
-//                    float &y = vectorField.at<cv::Vec2f>(idy, idx)[1];
-//
-//                    float x_buffer = x;
-//                    float y_buffer = y;
-//
-//                    x_buffer = -1.0 * x;
-//                    y_buffer = -1.0 * y;
-//
-//                    x = x_buffer;
-//                    y = y_buffer;
-//
-//                }
-//
-//            }
-//        }
-//    }
+#pragma omp parallel for
+    for (int idy = 0;
+         idy < vectorField.rows; idy++) { // rotate all vectors by 180 degree (only for center on line schema!)
 
-    if(heuristic_apply) {
+        for (int idx = 0; idx < vectorField.cols; idx++) {
+
+            float abs = cv::norm(vectorField.at<cv::Vec2f>(idy, idx));
+
+            if (abs > 0.0) {
+
+                float &x = vectorField.at<cv::Vec2f>(idy, idx)[0];
+                float &y = vectorField.at<cv::Vec2f>(idy, idx)[1];
+
+                float x_buffer = x;
+                float y_buffer = y;
+
+                x_buffer = -1.0 * x;
+                y_buffer = -1.0 * y;
+
+                x = x_buffer;
+                y = y_buffer;
+
+            }
+
+        }
+    }
+
+    if (heuristic_apply) {
         uchar valueB;
         uchar valueR;
 #pragma omp parallel for

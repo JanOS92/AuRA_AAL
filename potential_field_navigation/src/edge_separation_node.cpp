@@ -47,171 +47,159 @@ void edge_dyeing(const sensor_msgs::ImageConstPtr &msg) {
      * Initial image routine
      */
     image = cv_bridge::toCvShare(msg, msg->encoding)->image; // get the image from the msg pointer
-    cv::cvtColor(image, image_gray, cv::COLOR_RGB2GRAY); // convert the rgb image into grayscale image
-
-    /**
-     * Edge direction
-     */
-    cv::Mat image_filled_line(image_gray.size(), image_gray.type());
-#pragma omp parallel for
-    for (int idy = 0; idy < image_gray.rows; ++idy) {
-
-        for (int idx = 0; idx < image_gray.cols; ++idx) {
-
-            uchar value = image_gray.at<uchar>(idy, idx);
-
-            if (value > 128) {
-
-                image_filled_line.at<uchar>(idy, idx) = 0;
-
-            } else if (value == 128) {
-
-                image_filled_line.at<uchar>(idy, idx) = 255;
-
-            }
-
-        }
-
-    }
-
-    cv::Mat inv_image_filled_line(image_gray.size(), image_gray.type());
-    cv::bitwise_not(image_filled_line, inv_image_filled_line);
+    cv::cvtColor(image,image_gray, cv::COLOR_RGB2GRAY); // convert the rgb image into grayscale image
 
 //    /**
-//    * Debug only
-//    */
-//    cv::namedWindow("inv_image_filled_line", cv::WINDOW_NORMAL); // create a window for display.
-//    cv::imshow("inv_image_filled_line", inv_image_filled_line); // show image
-//    cv::waitKey(0); // wait for a keystroke in the window
-
-    cv::Mat vectorFieldX(image.size(), CV_32FC2, cv::Scalar(0.0f, 0.0f));
-    cv::Mat vectorFieldY(image.size(), CV_32FC2, cv::Scalar(0.0f, 0.0f));
-    cv::Mat vectorField(image.size(), CV_32FC2, cv::Scalar(0.0f, 0.0f));
-
-    cv::Scharr(inv_image_filled_line, vectorFieldX, CV_32FC2, 1, 0, 1, 0, cv::BORDER_REPLICATE);
-    cv::Scharr(inv_image_filled_line, vectorFieldY, CV_32FC2, 0, 1, 1, 0, cv::BORDER_REPLICATE);
-
-    cv::Mat vectorFieldChannels[2] = {vectorFieldX, vectorFieldY};
-    cv::merge(vectorFieldChannels, 2, vectorField);
+//     * Edge extraction
+//     */
+//    cv::Mat edgeMap(image_gray.rows, image_gray.cols, CV_32FC2, cv::Scalar(0.0f));
+//
+//    int lowThreshold = 0;
+//    int ratio = 3;
+//    int kernel_size = 3;
+//
+//    cv::blur(image_gray, edgeMap, cv::Size(kernel_size, kernel_size)); // reduce noise with a kernel 3x3
+//    cv::Canny(edgeMap, edgeMap, lowThreshold, lowThreshold * ratio, kernel_size); // canny detector
 
     /**
     * Edge extraction simple
     */
     cv::Mat inv;
     cv::Mat image_binary(image_gray.size(), image_gray.type());
-    cv::bitwise_not(image_gray, inv); // invert the colors
-    cv::threshold(inv, image_binary, 129, 255, cv::THRESH_BINARY);
+    cv::bitwise_not ( image_gray, inv ); // invert the colors
+    cv::threshold( inv, image_binary, 129, 255, cv::THRESH_BINARY);
 
     cv::Mat inv_sharpend;
     cv::GaussianBlur(image_binary, inv_sharpend, cv::Size(0, 0), 1); // cv::Size(0, 0): kernel size depends on sigmaX
+//    cv::addWeighted(image_binary, 1.5, inv_sharpend, -0.5, 0, inv_sharpend);
 
-    /**
-     * Edge clustering
-     */
-    cv::Mat labels;
-    int nLabels = cv::connectedComponents(image_binary, labels); // find connected components in the edgeMap
-
-    /**
-    * Edge dyeing
-    */
-    cv::Mat dyedBGR(image.rows, image.cols, CV_8UC3, cv::Scalar(0, 0, 0));
-    float dyeValue_max = 255.0;
-    float dyeValue_half = 128.0;
-    cv::Vec3b white = cv::Vec3b(dyeValue_max, dyeValue_max, dyeValue_max);
-    cv::Vec3b gray = cv::Vec3b(dyeValue_half, dyeValue_half, dyeValue_half);
-    cv::Vec3b black = cv::Vec3b(0.0, 0.0, 0.0);
-
-    // stride
-    float stride = sqrt((image.rows / 40) * (image.rows / 40) +
-                        (image.cols / 40) * (image.cols / 40)); //image.rows/20*1/2 and image.cols/20*1/2
-    stride = 2; //Debug only
-
-    // dye the edges
-    image.copyTo(dyedBGR); // copy the image to the dyedBGR
+    cv::Mat whiteMap(image_gray.size(), image_gray.type(), cv::Scalar(0.0f));
 #pragma omp parallel for
-    for (int idy = 0; idy < dyedBGR.rows; ++idy) {
+    for (int y = 0; y < image.rows; y++) {
 
-        for (int idx = 0; idx < dyedBGR.cols; ++idx) {
+        for (int x = 0; x < image.cols; x++) {
 
-            int labelIdx = labels.at<int>(idy, idx);
-            cv::Vec3b &pixel = dyedBGR.at<cv::Vec3b>(idy, idx);
+            uchar value = inv_sharpend.at<uchar>(y,x);
 
-            float x = -1.0 * vectorField.at<cv::Vec2f>(idy, idx)[0];
-            float y = -1.0 * vectorField.at<cv::Vec2f>(idy, idx)[1];
-            float abs = cv::norm(vectorField.at<cv::Vec2f>(idy, idx));
+            if(value < 30 && value > 0) {
 
-            if (abs > 0.0) {
+                image_binary.at<uchar>(y,x) = 255;
 
-                float dir = atan2(y, x);
+            } else if(value > 0) {
 
-                float x_it = 0.0;
-                float y_it = 0.0;
+                whiteMap.at<uchar>(y,x) = 255;
+                image_binary.at<uchar>(y,x) = 0;
 
-                if (isnan(dir)) {
+            } else {
 
-                } else {
-
-                    y_it = stride * sin(dir);
-                    x_it = stride * cos(dir);
-
-                }
-
-                cv::Point start(idy, idx);
-                cv::Point target(idy + (int) y_it, idx + (int) x_it);
-
-//                cv::Vec3b &pixel_target = dyedBGR.at<cv::Vec3b>(target.y,target.x);
-
-                ROS_INFO("(%i,%i) x = %f, y = %f", idy, idx, x, y);
-                ROS_INFO("(%i,%i) x_it = %f, y_it = %f, dir = %f", idy, idx, x_it, y_it, dir);
-                ROS_INFO("start = (%i,%i), target = (%i,%i), labelIdx = %i",idy,idx,idy + (int)y_it,idx + (int)x_it,labelIdx);
-
-                if (labelIdx == 1) { // leave the background
-
-                    dyedBGR.at<cv::Vec3b>(idy + (int)y_it,idx + (int)x_it) = cv::Vec3b(dyeValue_max, 0.0, 0.0); // blue
-
-                    cv::LineIterator it(image_gray, start, target);
-
-//                    for (int i = 0; i < it.count; i++, ++it) {
-//
-//                        // ToDo: Find out why it has the wrong direction?
-//                        dyedBGR.at<cv::Vec3b>(it.pos().y,it.pos().x) = white;
-//
-//                    }
-
-                } else if (labelIdx == 2) {
-
-                    dyedBGR.at<cv::Vec3b>(idy + (int)y_it,idx + (int)x_it) = cv::Vec3b(0.0, 0.0, dyeValue_max); // red
-
-                    cv::LineIterator it(image_gray, start, target);
-
-//                    for (int i = 0; i < it.count; i++, ++it) {
-//
-//                        // ToDo: Find out why it has the wrong direction?
-//                        dyedBGR.at<cv::Vec3b>(it.pos().y,it.pos().x) = white;
-//
-//                    }
-
-                } else {
-
-                }
+                image_binary.at<uchar>(y,x) = 0;
 
             }
-
 
         }
 
     }
 
 //    /**
-//    * Publish dyedBGR
-//    */
-//    cv_bridge::CvImage cvImage;
-//    cvImage.encoding = sensor_msgs::image_encodings::BGR8;
-//    cvImage.image = dyedBGR;
-//    cvImage.header.frame_id = "current"; // send always as current
+//     * Debug only
+//     */
+//    cv::namedWindow("image_gray", cv::WINDOW_NORMAL); // create a window for display.
+//    cv::imshow("image_gray", image_gray); // show image
+//    cv::waitKey(0); // wait for a keystroke in the window
+
+    /**
+     * Edge clustering
+     */
+    cv::Mat labels;
+//    int nLabels = cv::connectedComponents(edgeMap, labels); // find connected components in the edgeMap
+    int nLabels = cv::connectedComponents(image_binary, labels); // find connected components in the edgeMap
+
+    /**
+    * Edge dyeing
+    */
+    cv::Mat dyedBGR(image.rows, image.cols, CV_8UC3, cv::Scalar(0,0,0));
+    float dyeValue_max = 255.0;
+//    float dyeValue_max = 0.0;
+    float dyeValue_half = 128.0;
+    cv::Vec3b gray = cv::Vec3b( dyeValue_half, dyeValue_half, dyeValue_half );
+    cv::Vec3b black = cv::Vec3b( 0.0, 0.0, 0.0 );
+
+//    std::vector<cv::Vec3b> colors(nLabels);
+//    colors[0] = black; // set background value
+
+    ROS_INFO("nLabels = %i", nLabels);
+
+//    for(int label = 2; label <= nLabels; ++label) { // with border
+//    for(int label = 1; label <= nLabels; ++label) { //without border
 //
-//    ROS_INFO("[%s] Send as current", ros::this_node::getName().c_str());
-//    imagePublisher.publish(cvImage.toImageMsg());
+//        if (label < nLabels - 1) {
+//
+//            colors[label] = cv::Vec3b( dyeValue_max, 0.0, 0.0 ); // blue
+//
+//        } else {
+//
+//            colors[label] = cv::Vec3b( 0.0, 0.0, dyeValue_max ); // red
+//
+//        }
+//
+//    }
+
+//    // dye the edges
+//#pragma omp parallel for
+//    for(int idy = 0; idy < dyedBGR.rows; ++idy){
+//
+//        for(int idx = 0; idx < dyedBGR.cols; ++idx){
+//
+//            int labelIdx = labels.at<int>(idy, idx);
+//            cv::Vec3b &pixel = dyedBGR.at<cv::Vec3b>(idy, idx);
+//            pixel = colors[labelIdx];
+//
+//        }
+//
+//    }
+
+    // dye the edges
+    image.copyTo(dyedBGR); // copy the image to the dyedBGR
+#pragma omp parallel for
+    for(int idy = 0; idy < dyedBGR.rows; ++idy){
+
+        for(int idx = 0; idx < dyedBGR.cols; ++idx){
+
+            int labelIdx = labels.at<int>(idy, idx);
+            cv::Vec3b &pixel = dyedBGR.at<cv::Vec3b>(idy, idx);
+
+            if(labelIdx == 1) { // leave the background
+
+                pixel = cv::Vec3b( dyeValue_max, 0.0, 0.0 ); // blue
+
+            } else if (labelIdx == 2) {
+
+                pixel = cv::Vec3b( 0.0, 0.0, dyeValue_max ); // red
+
+            } else {
+
+                if(whiteMap.at<uchar>(idy,idx) > 0) { // burn the whiteMap in
+
+                    pixel = cv::Vec3b(dyeValue_max,dyeValue_max,dyeValue_max); // white
+
+                }
+
+            }
+
+        }
+
+    }
+
+    /**
+    * Publish dyedBGR
+    */
+    cv_bridge::CvImage cvImage;
+    cvImage.encoding = sensor_msgs::image_encodings::BGR8;
+    cvImage.image = dyedBGR;
+    cvImage.header.frame_id = "current"; // send always as current
+
+    ROS_INFO("[%s] Send as current", ros::this_node::getName().c_str());
+    imagePublisher.publish(cvImage.toImageMsg());
 
     /**
      * Debug only
