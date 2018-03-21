@@ -15,9 +15,10 @@
 -- Using CATKIN_ENABLE_TESTING: ON
 -- Call enable_testing()
 -- Using CATKIN_TEST_RESULTS_DIR: /homes/josullivan/catkin_ws2/src/amiro_potential_field_navigation/potential_field_navigation/cmake-build-debug/test_results
--- Found gtest sources under '/usr/src/gtest': gtests will be built
+-- Found gmock sources under '/usr/src/gmock': gmock will be built
+-- Found gtest sources under '/usr/src/gmock': gtests will be built
 -- Using Python nosetests: /vol/robocup/nightly-2017-03-30/bin/nosetests-2.7
--- catkin 0.7.8
+-- catkin 0.7.11
 -- Using these message generators: gencpp;geneus;genjava;genlisp;gennodejs;genpy
 CMake Error at /homes/josullivan/catkin_ws/devel/share/grid_map_core/cmake/grid_map_coreConfig.cmake:113 (message):
   Project 'grid_map_core' specifies

@@ -83,15 +83,28 @@ void process(const cv::Mat &vectorfield, const nav_msgs::OdometryConstPtr odom) 
     const double robotAngle = tf::getYaw(odom->pose.pose.orientation); // JO
     const float angleDiff = getAngleDiff(robotAngle, vectorAngle);
 
+    const float vectorAbs_max = 4.0; // JO
+
     if (twistMode) {
 
         ROS_INFO("vectorAbs = %f, angleDiff = %f", vectorAbs, angleDiff); // JO
+
 
         // Calculate the steering vector
         geometry_msgs::Twist twist;
 
         twist.linear.x = velocityScale_meterPerSecond * vectorAbs;
         twist.angular.z = angularScale_radPerSecond * angleDiff;
+
+        if(vectorAbs > vectorAbs_max) { // JO
+
+            twist.linear.x = velocityScale_meterPerSecond * vectorAbs_max;
+
+        } else {
+
+            twist.linear.x = velocityScale_meterPerSecond * vectorAbs;
+
+        }
 
         ROS_DEBUG_STREAM(
                 ros::this_node::getName() << " VectorAbs: " << vectorAbs << ", robotAngle: " << robotAngle * 180 / M_PI
