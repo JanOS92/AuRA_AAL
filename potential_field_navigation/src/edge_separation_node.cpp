@@ -17,10 +17,11 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv-3.3.1/opencv2/imgproc.hpp>
+#include <omp.h>
 
 // Utils
 #include "potential_field_utils.hpp"
-
+#include <algorithm>
 
 using namespace std;
 
@@ -34,6 +35,10 @@ static image_transport::Publisher imagePublisher;
 
 // Process variables
 static int image_flip_code;
+
+// Process constants
+float dyeValue_half = 128.0;
+float dyeValue_max = 255.0;
 
 void edge_dyeing(const sensor_msgs::ImageConstPtr &msg) {
 
@@ -49,50 +54,172 @@ void edge_dyeing(const sensor_msgs::ImageConstPtr &msg) {
     image = cv_bridge::toCvShare(msg, msg->encoding)->image; // get the image from the msg pointer
     cv::cvtColor(image,image_gray, cv::COLOR_RGB2GRAY); // convert the rgb image into grayscale image
 
-//    /**
-//     * Edge extraction
-//     */
-//    cv::Mat edgeMap(image_gray.rows, image_gray.cols, CV_32FC2, cv::Scalar(0.0f));
-//
-//    int lowThreshold = 0;
-//    int ratio = 3;
-//    int kernel_size = 3;
-//
-//    cv::blur(image_gray, edgeMap, cv::Size(kernel_size, kernel_size)); // reduce noise with a kernel 3x3
-//    cv::Canny(edgeMap, edgeMap, lowThreshold, lowThreshold * ratio, kernel_size); // canny detector
+    cv::Mat image_binary(image_gray.size(), image_gray.type(),cv::Scalar(0.0f));
+
+#pragma omp parallel for
+    for(int idy = 0; idy < image_gray.rows; ++idy) { // get a white map
+
+        for (int idx = 0; idx < image_gray.cols; ++idx) {
+
+            uchar &value = image_gray.at<uchar>(idy,idx);
+
+            if(value != dyeValue_max) {
+
+                image_binary.at<uchar>(idy,idx) = dyeValue_max;
+
+            }
+
+        }
+
+    }
 
     /**
-    * Edge extraction simple
-    */
-    cv::Mat inv;
-    cv::Mat image_binary(image_gray.size(), image_gray.type());
-    cv::bitwise_not ( image_gray, inv ); // invert the colors
-    cv::threshold( inv, image_binary, 129, 255, cv::THRESH_BINARY);
+     * Closeness detection
+     */
+    bool closedConture = false;
+    std::vector< std::vector <cv::Point> > contours; // Vector for storing contour
+    std::vector< cv::Vec4i > hierarchy;
+    findContours( image_binary, contours, hierarchy, CV_RETR_CCOMP, CV_CHAIN_APPROX_SIMPLE );
 
-    cv::Mat inv_sharpend;
-    cv::GaussianBlur(image_binary, inv_sharpend, cv::Size(0, 0), 1); // cv::Size(0, 0): kernel size depends on sigmaX
-//    cv::addWeighted(image_binary, 1.5, inv_sharpend, -0.5, 0, inv_sharpend);
+    ROS_INFO("contours.size() = %i", contours.size());
+    ROS_INFO("hierarchy.size() = %i", hierarchy.size());
 
-    cv::Mat whiteMap(image_gray.size(), image_gray.type(), cv::Scalar(0.0f));
-#pragma omp parallel for
-    for (int y = 0; y < image.rows; y++) {
+    for (int i = 0; i < hierarchy.size(); i = hierarchy[i][0]) {
 
-        for (int x = 0; x < image.cols; x++) {
+        if ( hierarchy[i][2] < 0 ) { //check if there is a child contour (magic line)
 
-            uchar value = inv_sharpend.at<uchar>(y,x);
+            ROS_INFO("closedConture = false");
+            closedConture = false;
 
-            if(value < 30 && value > 0) {
+        } else {
 
-                image_binary.at<uchar>(y,x) = 255;
+            ROS_INFO("closedConture = true");
+            closedConture = true;
 
-            } else if(value > 0) {
+        }
 
-                whiteMap.at<uchar>(y,x) = 255;
-                image_binary.at<uchar>(y,x) = 0;
+    }
 
-            } else {
+    /**
+     * Corner detection
+     */
+    cv::Mat dst, dst_norm, dst_norm_scaled;
+    dst = cv::Mat::zeros( image_binary.size(), CV_32FC1 );
+    std::vector<cv::Point> cornerList;
 
-                image_binary.at<uchar>(y,x) = 0;
+    if(!closedConture) {
+
+        // detector parameters
+        int blockSize = 2;
+        int apertureSize = 3;
+        double k = 0.04;
+        int thresh = 200;
+
+        // detecting corners
+        cv::cornerHarris(image_binary, dst, blockSize, apertureSize, k, cv::BORDER_DEFAULT);
+
+        // normalizing
+        cv::normalize(dst, dst_norm, 0, 255, cv::NORM_MINMAX, CV_32FC1, cv::Mat());
+
+        // store corner coordinates
+        for (int idy = 0; idy < dst_norm.rows; idy++) {
+
+            for (int idx = 0; idx < dst_norm.cols; idx++) {
+
+                if ((int) dst_norm.at<float>(idx, idy) > thresh) { // caution: idx -> idy, idy -> idx
+
+//                    ROS_INFO("dst_norm.at<float>(%i, %i) = %i", idx, idy, (int) dst_norm.at<float>(idx, idy));
+                    cornerList.emplace_back(cv::Point(idy, idx));
+
+                }
+            }
+        }
+    }
+
+//    ROS_INFO("cornerList.size() = %i",cornerList.size());
+
+    /**
+     * Edge extraction
+     */
+    cv::Mat edgeMap(image_binary.rows, image_binary.cols, CV_32FC2, cv::Scalar(0.0f));
+
+    // detector parameters
+    int lowThreshold = 0;
+    int ratio = 3;
+    int kernel_size = 3;
+
+    cv::blur(image_binary, edgeMap, cv::Size(kernel_size, kernel_size)); // reduce noise with a kernel 3x3
+    cv::Canny(edgeMap, edgeMap, lowThreshold, lowThreshold * ratio, kernel_size); // canny detector
+
+    /**
+     * edgeMap postprocessing
+     */
+    std::vector<cv::Point> processedPoints;
+    if(!closedConture && cornerList.size() > 0) {
+
+        for(auto it1 = cornerList.begin(); it1 < cornerList.end(); it1++) {
+
+            cv::Point nearestNeighbour;
+            cv::Point initialPoint;
+            double minDist = std::numeric_limits<float>::max();
+
+            if(processedPoints.size() > 0) { // skip point if processed already
+
+                if(std::find(processedPoints.begin(), processedPoints.end(), *it1) != processedPoints.end()) {
+
+                    continue;
+
+                }
+
+            }
+
+            for(auto it2 = cornerList.begin(); it2 < cornerList.end(); it2++) { // find the nearest corner
+
+                if(*it1 == *it2) {
+
+                    continue;
+
+                }
+
+                double abs = sqrt((it1->x - it2->x) * (it1->x - it2->x) + (it1->y -  it2->y) * (it1->y -  it2->y));
+
+                if(abs < minDist) {
+
+                    minDist = abs;
+                    nearestNeighbour = *it2;
+
+                }
+
+            }
+
+            initialPoint = *it1;
+
+            // store the processed point pair
+            processedPoints.emplace_back(nearestNeighbour);
+            processedPoints.emplace_back(initialPoint);
+
+//            ROS_INFO("initialPoint->x = %i, initialPoint->y = %i", initialPoint.x, initialPoint.y);
+//            ROS_INFO("nearestNeighbour->x = %i, nearestNeighbour->y = %i", nearestNeighbour.x, nearestNeighbour.y);
+
+            cv::LineIterator lineIterator(edgeMap, initialPoint, nearestNeighbour, 8);
+
+            int sideLength = 2;
+
+            for(auto i = 0; i < lineIterator.count; i++ , lineIterator++) { // move a kernel along the line
+
+                cv::Point p1 = cv::Point(lineIterator.pos().x - sideLength, lineIterator.pos().y - sideLength);
+                cv::Point p2 = cv::Point(lineIterator.pos().x + sideLength + 1, lineIterator.pos().y + sideLength + 1);
+                cv::Mat kernel = edgeMap(cv::Rect(p1, p2));
+
+                for(int idy = 0; idy < kernel.rows; idy++) { // dye area
+
+                    for(int idx = 0; idx < kernel.cols; idx++) {
+
+                        kernel.at<uchar>(idy,idx) = 0;
+
+                    }
+
+                }
 
             }
 
@@ -103,82 +230,46 @@ void edge_dyeing(const sensor_msgs::ImageConstPtr &msg) {
 //    /**
 //     * Debug only
 //     */
-//    cv::namedWindow("image_gray", cv::WINDOW_NORMAL); // create a window for display.
-//    cv::imshow("image_gray", image_gray); // show image
+//    cv::namedWindow("edgeMap", cv::WINDOW_NORMAL); // create a window for display.
+//    cv::imshow("edgeMap", edgeMap); // show image
 //    cv::waitKey(0); // wait for a keystroke in the window
 
     /**
      * Edge clustering
      */
-    cv::Mat labels;
-//    int nLabels = cv::connectedComponents(edgeMap, labels); // find connected components in the edgeMap
-    int nLabels = cv::connectedComponents(image_binary, labels); // find connected components in the edgeMap
+    cv::Mat labelsEdgeMap;
+    int cntLabelsEdgeMap = cv::connectedComponents(edgeMap, labelsEdgeMap); // find connected components in the edgeMap
 
     /**
     * Edge dyeing
     */
-    cv::Mat dyedBGR(image.rows, image.cols, CV_8UC3, cv::Scalar(0,0,0));
-    float dyeValue_max = 255.0;
-//    float dyeValue_max = 0.0;
-    float dyeValue_half = 128.0;
+    cv::Mat dyedBGR(image.rows, image.cols, CV_8UC3, cv::Scalar(dyeValue_half, dyeValue_half, dyeValue_half));
     cv::Vec3b gray = cv::Vec3b( dyeValue_half, dyeValue_half, dyeValue_half );
     cv::Vec3b black = cv::Vec3b( 0.0, 0.0, 0.0 );
 
-//    std::vector<cv::Vec3b> colors(nLabels);
-//    colors[0] = black; // set background value
-
-    ROS_INFO("nLabels = %i", nLabels);
-
-//    for(int label = 2; label <= nLabels; ++label) { // with border
-//    for(int label = 1; label <= nLabels; ++label) { //without border
-//
-//        if (label < nLabels - 1) {
-//
-//            colors[label] = cv::Vec3b( dyeValue_max, 0.0, 0.0 ); // blue
-//
-//        } else {
-//
-//            colors[label] = cv::Vec3b( 0.0, 0.0, dyeValue_max ); // red
-//
-//        }
-//
-//    }
-
-//    // dye the edges
-//#pragma omp parallel for
-//    for(int idy = 0; idy < dyedBGR.rows; ++idy){
-//
-//        for(int idx = 0; idx < dyedBGR.cols; ++idx){
-//
-//            int labelIdx = labels.at<int>(idy, idx);
-//            cv::Vec3b &pixel = dyedBGR.at<cv::Vec3b>(idy, idx);
-//            pixel = colors[labelIdx];
-//
-//        }
-//
-//    }
+    ROS_INFO("nLabels = %i", cntLabelsEdgeMap);
 
     // dye the edges
-    image.copyTo(dyedBGR); // copy the image to the dyedBGR
 #pragma omp parallel for
     for(int idy = 0; idy < dyedBGR.rows; ++idy){
 
-        for(int idx = 0; idx < dyedBGR.cols; ++idx){
+        for(int idx = 0; idx < dyedBGR.cols; ++idx) {
 
-            int labelIdx = labels.at<int>(idy, idx);
+            int labelIdxEdgeMap = labelsEdgeMap.at<int>(idy, idx);
+            
             cv::Vec3b &pixel = dyedBGR.at<cv::Vec3b>(idy, idx);
 
-            if(labelIdx == 1) { // leave the background
+            if(labelIdxEdgeMap == 1) { // leave the background (labelIdxEdgeMap == 0)
 
                 pixel = cv::Vec3b( dyeValue_max, 0.0, 0.0 ); // blue
 
-            } else if (labelIdx == 2) {
+            } else if (labelIdxEdgeMap == 2) {
 
                 pixel = cv::Vec3b( 0.0, 0.0, dyeValue_max ); // red
 
             } else {
 
-                if(whiteMap.at<uchar>(idy,idx) > 0) { // burn the whiteMap in
+                if(image_binary.at<uchar>(idy,idx) == dyeValue_max) { // burn the whiteMap in
 
                     pixel = cv::Vec3b(dyeValue_max,dyeValue_max,dyeValue_max); // white
 

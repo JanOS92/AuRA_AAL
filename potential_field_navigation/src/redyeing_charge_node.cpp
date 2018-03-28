@@ -35,6 +35,14 @@ static image_transport::Publisher imagePublisher;
 // Process variables
 static int image_flip_code;
 
+// Process constants
+float dyeValue_max = 255;
+float dyeValue_half = 128;
+cv::Vec3b blue = cv::Vec3b(dyeValue_max, 0, 0);
+cv::Vec3b red = cv::Vec3b(0, 0, dyeValue_max);
+cv::Vec3b gray = cv::Vec3b(dyeValue_half, dyeValue_half, dyeValue_half);
+cv::Vec3b white = cv::Vec3b(dyeValue_max, dyeValue_max, dyeValue_max);
+
 void dyeing_charge(const sensor_msgs::ImageConstPtr &msg) {
 
     /**
@@ -49,104 +57,34 @@ void dyeing_charge(const sensor_msgs::ImageConstPtr &msg) {
     image = cv_bridge::toCvShare(msg, msg->encoding)->image; // get the image from the msg pointer
     cv::cvtColor(image, image_gray, cv::COLOR_RGB2GRAY); // convert the rgb image into grayscale image
 
-    /**
-     * ---------------------
-     * Center on line schema
-     * ---------------------
-     */
+    cv::Mat image_binary(image_gray.size(), image_gray.type(),cv::Scalar(0.0f));
 
-//    /**
-//     * Image conversion
-//     */
-////    cv::Mat inv;
-////    cv::Mat image_binary(image_gray.size(), image_gray.type());
-////    cv::bitwise_not ( image_gray, inv ); // invert the colors
-////    cv::threshold( inv, image_binary, 129, 255, cv::THRESH_BINARY);
-//
-////    /**
-////    * Debug only
-////    */
-////    cv::namedWindow("image_gray", cv::WINDOW_NORMAL); // create a window for display.
-////    cv::imshow("image_gray", image_gray); // show image
-////    cv::waitKey(0); // wait for a keystroke in the window
-//
-//    /**
-//    * Redyeing
-//    */
-//    cv::Mat dyedBGR(image.rows, image.cols, CV_8UC3, cv::Scalar(0,0,0));
-//
-//    float dyeValue_max = 255;
-//    float dyeValue_half = 128;
-//    cv::Vec3b blue;
-//    cv::Vec3b red;
-//    cv::Vec3b black;
-//    cv::Vec3b gray;
-//    cv::Vec3b white;
-//    blue = cv::Vec3b( dyeValue_max, 0, 0 );
-//    red = cv::Vec3b( 0, 0, dyeValue_max );
-//    black = cv::Vec3b( 0, 0, 0 );
-//    gray = cv::Vec3b( dyeValue_half, dyeValue_half, dyeValue_half );
-//    white = cv::Vec3b( 255, 255, 255 );
-//
-////#pragma omp parallel for
-////    for(int idy = 0; idy < dyedBGR.rows; ++idy){  // redye the image for charge
-////
-////        for(int idx = 0; idx < dyedBGR.cols; ++idx){
-////
-////            cv::Vec3b &pixel = dyedBGR.at<cv::Vec3b>(idy, idx);
-////
-////            if(image_binary.at<uchar>(idy, idx) > 0) {
-////
-////                pixel = red;
-//////                pixel = blue;
-////
-////            } else {
-////
-//////                pixel = gray;
-////
-////            }
-////
-////        }
-////
-////    }
-//
-//#pragma omp parallel for
-//    for(int idy = 0; idy < dyedBGR.rows; ++idy){  // redye the image for charge
-//
-//        for(int idx = 0; idx < dyedBGR.cols; ++idx){
-//
-//            cv::Vec3b &pixel = dyedBGR.at<cv::Vec3b>(idy, idx);
-//
-//            if(image_gray.at<uchar>(idy, idx) < dyeValue_half) {
-//
-//                pixel = red;
-////                pixel = black;
-//
-//            } else if(image_gray.at<uchar>(idy, idx) >= dyeValue_half && image_gray.at<uchar>(idy, idx) < 200)  {
-//
-//                pixel = gray;
-////                pixel = black;
-//
-//            } else {
-//
-//                pixel = white;
-////                pixel = black;
-//
-//            }
-//
-//        }
-//
-//    }
+#pragma omp parallel for
+    for(int idy = 0; idy < image_gray.rows; ++idy) { // get a white map
+
+        for (int idx = 0; idx < image_gray.cols; ++idx) {
+
+            uchar value = image_gray.at<uchar>(idy,idx);
+
+            if(value != dyeValue_max) {
+
+                image_binary.at<uchar>(idy,idx) = dyeValue_max;
+
+            }
+
+        }
+
+    }
 
     /**
      * ---------------------
      * Stay on line schema
      * ---------------------
      */
-    cv::Mat inv;
-    cv::Mat image_binary(image_gray.size(), image_gray.type());
-    cv::bitwise_not(image_gray, inv); // invert the colors
-    cv::threshold(inv, image_binary, 129, 255, cv::THRESH_BINARY);
+//    cv::Mat inv;
+//    cv::Mat image_binary(image_gray.size(), image_gray.type());
+//    cv::bitwise_not(image_gray, inv); // invert the colors
+//    cv::threshold(inv, image_binary, 129, 255, cv::THRESH_BINARY);
 
     int kernelSizeX = image.cols / 40;
     int kernelSizeY = image.rows / 40;
@@ -154,13 +92,13 @@ void dyeing_charge(const sensor_msgs::ImageConstPtr &msg) {
     cv::Mat whiteMap(image_gray.size(), image_gray.type(), cv::Scalar(0.0f, 0.0f));
 
 #pragma omp parallel for
-    for (int idy = 0; idy < image_binary.rows; ++idy) {  // broaden the line
+    for (int idy = 0; idy < whiteMap.rows; ++idy) {  // broaden the line
 
-        for (int idx = 0; idx < image_binary.cols; ++idx) {
+        for (int idx = 0; idx < whiteMap.cols; ++idx) {
 
             uchar value = image_binary.at<uchar>(idy, idx);
 
-            if (value == 255) { // case white
+            if (value == dyeValue_max) { // case white
 
                 for (int idy_kernel = 0; idy_kernel < kernelSizeY; ++idy_kernel) {
 
@@ -184,28 +122,10 @@ void dyeing_charge(const sensor_msgs::ImageConstPtr &msg) {
 
     }
 
-//    /**
-//    * Debug only
-//    */
-//    cv::namedWindow("whiteMap", cv::WINDOW_NORMAL); // create a window for display.
-//    cv::imshow("whiteMap", whiteMap); // show image
-//    cv::waitKey(0); // wait for a keystroke in the window
-
     /**
     * Redyeing
     */
-    cv::Mat dyedBGR(image.rows, image.cols, CV_8UC3, cv::Scalar(0, 0, 0));
-
-    float dyeValue_max = 255;
-    float dyeValue_half = 128;
-    cv::Vec3b blue;
-    cv::Vec3b red;
-    cv::Vec3b gray;
-    cv::Vec3b white;
-    blue = cv::Vec3b(dyeValue_max, 0, 0);
-    red = cv::Vec3b(0, 0, dyeValue_max);
-    gray = cv::Vec3b(dyeValue_half, dyeValue_half, dyeValue_half);
-    white = cv::Vec3b(255, 255, 255);
+    cv::Mat dyedBGR(image.rows, image.cols, CV_8UC3, cv::Scalar(dyeValue_half, dyeValue_half, dyeValue_half));
 
 #pragma omp parallel for
     for (int idy = 0; idy < dyedBGR.rows; ++idy) {  // redye the image for charge
@@ -214,36 +134,49 @@ void dyeing_charge(const sensor_msgs::ImageConstPtr &msg) {
 
             cv::Vec3b &pixel = dyedBGR.at<cv::Vec3b>(idy, idx);
 
-// best option
-//            if (image_binary.at<uchar>(idy, idx) > 0) { // mind the hierarchy!
-//
-//                pixel = blue;
-//
-//            } else if (image_gray.at<uchar>(idy, idx) == dyeValue_max) {
-//
-//                pixel = gray;
-//
-//            } else if (whiteMap.at<uchar>(idy, idx) > 0) {
-//
-//                pixel = white;
-//
-//            } else {
-//
-//                pixel = gray;
-//
-//            }
-
-            if (image_gray.at<uchar>(idy, idx) >= 240) { // mind the hierarchy!
+            if (image_binary.at<uchar>(idy,idx) == dyeValue_max) {
 
                 pixel = blue;
 
-            } else if (whiteMap.at<uchar>(idy, idx) > 0) {
+            } else if(whiteMap.at<uchar>(idy,idx) == dyeValue_max) {
 
                 pixel = white;
 
             } else {
 
                 pixel = gray;
+
+            }
+
+        }
+
+    }
+
+    /**
+     * dyedBGR postprocessing
+     */
+    //ToDo: Could be better...
+    cv::Mat inv_sharpend;
+    cv::GaussianBlur(dyedBGR, inv_sharpend, cv::Size(0, 0), 2); // cv::Size(0, 0): kernel size depends on sigmaX
+
+//    /**
+//    * Debug only
+//    */
+//    cv::namedWindow("inv_sharpend", cv::WINDOW_NORMAL); // create a window for display.
+//    cv::imshow("inv_sharpend", inv_sharpend); // show image
+//    cv::waitKey(0); // wait for a keystroke in the window
+
+#pragma omp parallel for
+    for (int idy = 0; idy < dyedBGR.rows; ++idy) {  // redye the image for charge
+
+        for (int idx = 0; idx < dyedBGR.cols; ++idx) {
+
+            cv::Vec3b &pixelOrig = dyedBGR.at<cv::Vec3b>(idy, idx);
+            cv::Vec3b pixelBlur = inv_sharpend.at<cv::Vec3b>(idy, idx);
+
+            if(pixelOrig == blue && pixelBlur.val[2] >= 20) { // magic condition
+
+                pixelOrig = white;
 
             }
 
