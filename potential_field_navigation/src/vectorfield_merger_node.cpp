@@ -127,6 +127,9 @@ int main(int argc, char *argv[]) {
 
                 vectorfield_merged = field1 + field2;
 
+                //roate the image ccw (JO)
+                rot90(vectorfield_merged, 2);
+
                 // Normalize to the greatest vector
                 if (normalize) {
 

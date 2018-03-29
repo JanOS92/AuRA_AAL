@@ -13,6 +13,7 @@
 #include <message_filters/subscriber.h>
 #include <message_filters/synchronizer.h>
 #include <message_filters/sync_policies/approximate_time.h>
+#include <tf/transform_listener.h>
 
 // ROS - OpenCV_ Bridge
 #include <cv_bridge/cv_bridge.h>
@@ -37,6 +38,8 @@ static bool pixelMode;
 static bool twistMode;
 static double pixelScale;
 
+tf::TransformListener *listener;
+
 void process(const cv::Mat &vectorfield, const nav_msgs::OdometryConstPtr odom) {
 
     cv::Point2i pose2d_i;
@@ -45,15 +48,32 @@ void process(const cv::Mat &vectorfield, const nav_msgs::OdometryConstPtr odom) 
     if (pixelMode) {
 
         pose2d_i = cv::Point2i((int) (odom->pose.pose.position.x * pixelScale),
-                             (int) (odom->pose.pose.position.y * pixelScale));
+                               (int) (odom->pose.pose.position.y * pixelScale));
 
     } else {
 
-        pose2d_i = cv::Point2i(pose2pixel(odom->pose.pose, vectorfield.cols, vectorfield.rows, meterPerPixel));
+        tf::StampedTransform transform; //Transformation between the robot and the vector field (JO)
+        try {
 
-        // rotate by 90° (ccw) and invert the y axis
-//        pose2d_o.x = -1.0 * pose2d_i.y;
-//        pose2d_o.y = -1.0 * pose2d_i.x;
+            listener->lookupTransform("potential_field", "/amiro1/base_link", ros::Time(0), transform);
+
+        } catch (tf::TransformException ex) {
+
+            ROS_ERROR("%s", ex.what());
+            ros::Duration(1.0).sleep();
+
+        }
+
+        geometry_msgs::Pose odomPose_tf;
+
+        odomPose_tf.position.x = transform.getOrigin().x();
+        odomPose_tf.position.y = transform.getOrigin().y();
+
+//        ROS_INFO("odomPose_tf.position.x = %f, odomPose_tf.position.y = %f", odomPose_tf.position.x, odomPose_tf.position.y);
+
+//        pose2d_i = cv::Point2i(pose2pixel(odom->pose.pose, vectorfield.cols, vectorfield.rows, meterPerPixel));
+        pose2d_i = cv::Point2i(pose2pixel(odomPose_tf, vectorfield.cols, vectorfield.rows, meterPerPixel)); // JO
+
         // ToDo: Find out why this works out fine without any transformation?!
         pose2d_o.x = pose2d_i.x;
         pose2d_o.y = pose2d_i.y;
@@ -68,12 +88,18 @@ void process(const cv::Mat &vectorfield, const nav_msgs::OdometryConstPtr odom) 
 
     }
 
-    // IMPORTANT: We assume the orientation of the robot resides in the world frame
+    // IMPORTANT: We assume the orientation olf the robot resides in the world frame
     // Get the vector in the vectorfield at robot position
 //    cv::Point2f vector(vectorfield.at<cv::Vec2f>(pose2d_i.y, pose2d_i.x)[0],
 //                       vectorfield.at<cv::Vec2f>(pose2d_i.y, pose2d_i.x)[1]);
     cv::Point2f vector(vectorfield.at<cv::Vec2f>(pose2d_o.y, pose2d_o.x)[0],
                        vectorfield.at<cv::Vec2f>(pose2d_o.y, pose2d_o.x)[1]);
+
+    // rotate the vector by 90 degree (ccw) (JO)
+    float xBuffer;
+    xBuffer = vector.x;
+    vector.x = -1.0 * vector.y;
+    vector.y = 1.0 * xBuffer;
 
     const float vectorAbs = cv::norm(vector);
     const double vectorAngle = atan2(vector.y, vector.x);
@@ -83,12 +109,11 @@ void process(const cv::Mat &vectorfield, const nav_msgs::OdometryConstPtr odom) 
     const double robotAngle = tf::getYaw(odom->pose.pose.orientation); // JO
     const float angleDiff = getAngleDiff(robotAngle, vectorAngle);
 
-    const float vectorAbs_max = 4.0; // JO
+    const float vectorAbs_max = 2.0; // JO
 
     if (twistMode) {
 
         ROS_INFO("vectorAbs = %f, angleDiff = %f", vectorAbs, angleDiff); // JO
-
 
         // Calculate the steering vector
         geometry_msgs::Twist twist;
@@ -96,7 +121,7 @@ void process(const cv::Mat &vectorfield, const nav_msgs::OdometryConstPtr odom) 
         twist.linear.x = velocityScale_meterPerSecond * vectorAbs;
         twist.angular.z = angularScale_radPerSecond * angleDiff;
 
-        if(vectorAbs > vectorAbs_max) { // JO
+        if (vectorAbs > vectorAbs_max) { // JO
 
             twist.linear.x = velocityScale_meterPerSecond * vectorAbs_max;
 
@@ -106,10 +131,10 @@ void process(const cv::Mat &vectorfield, const nav_msgs::OdometryConstPtr odom) 
 
         }
 
-        ROS_DEBUG_STREAM(
-                ros::this_node::getName() << " VectorAbs: " << vectorAbs << ", robotAngle: " << robotAngle * 180 / M_PI
-                                          << ", vectorAngle: " << vectorAngle * 180 / M_PI << ", diff: "
-                                          << angleDiff * 180 / M_PI);
+//        ROS_DEBUG_STREAM(
+//                ros::this_node::getName() << " VectorAbs: " << vectorAbs << ", robotAngle: " << robotAngle * 180 / M_PI
+//                                          << ", vectorAngle: " << vectorAngle * 180 / M_PI << ", diff: "
+//                                          << angleDiff * 180 / M_PI);
         pub.publish(twist);
 
     } else {
@@ -163,6 +188,8 @@ int main(int argc, char *argv[]) {
     // Init ROS
     ros::init(argc, argv, ros::this_node::getName());
     ros::NodeHandle node("~");
+
+    listener = new tf::TransformListener;
 
     // ROS Topics
     string twistPublisherTopic, vectorPublisherTopic;

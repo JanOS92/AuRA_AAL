@@ -4,7 +4,7 @@
   <param name="use_sim_time" value="false"/>
   <arg name="rviz" default="true" />
   <arg name="markerId" default="1"/>
-  <arg name="meter_per_pixel" value="0.005"/>
+  <arg name="meter_per_pixel" value="0.0025"/>
   <arg name="image_width" value="2000" />
   <arg name="image_height" value="2000" />
   <!--arg name="pixel_mode" value="false"/-->
@@ -37,7 +37,7 @@
         <param name="vectorfield_publisher_topic" value="/vectorfield/final_image_current"/>
         <!--param name="vectorfield_publisher_topic" value="/vectorfield/final_image"/-->
         <param name="heuristic_abs_min" value="1.0"/> <?Undefined An arbitrary value which indecates the start of value decay?>
-        <param name="heuristic_factor" value="40.0"/> <?Maximum vector lengh?>
+        <param name="heuristic_factor" value="20.0"/> <?Maximum vector lengh?>
         <!--param name="heuristic_apply" value="1"/> <?Use heuristic instead of native vectorfield?-->
         <param name="heuristic_apply" value="1"/> <?Use heuristic instead of native vectorfield?>
     </node>
@@ -49,7 +49,7 @@
       <param name="vectorfield_publisher_topic" value="/vectorfield/final_image_charge"/>
       <!--param name="vectorfield_publisher_topic" value="/vectorfield/final_image"/-->
       <param name="heuristic_abs_min" value="1.0"/> <?Undefined An arbitrary value which indecates the start of value decay?>
-      <param name="heuristic_factor" value="30.0"/> <?Maximum vector lengh?>
+      <param name="heuristic_factor" value="10.0"/> <?Maximum vector lengh?>
       <!--param name="heuristic_apply" value="1"/> <?Use heuristic instead of native vectorfield?-->
       <param name="heuristic_apply" value="1"/> <?Use heuristic instead of native vectorfield?>
     </node>
@@ -65,7 +65,7 @@
 
     <node name="vectorfield_to_gridmap_node" pkg="potential_field_navigation" type="vectorfield_to_gridmap_node" output="screen" cwd="ROS_HOME">
         <param name="meter_per_pixel" value="$(arg meter_per_pixel)"/>
-        <param name="frame_id" value="world"/>
+        <param name="frame_id" value="potential_field"/>
         <param name="vectorfield_listener_topic" value="/vectorfield/final_image"/>
         <param name="gridmap_publisher_topic" value="/vectorfield/image/gridmap"/>
     </node>

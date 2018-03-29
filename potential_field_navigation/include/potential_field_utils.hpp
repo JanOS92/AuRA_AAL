@@ -342,4 +342,12 @@ pose2pixel(const geometry_msgs::Pose &pose, const int imageWidth, const int imag
 
 }
 
+void warpImg(cv::Mat &img, int offsetX, int offsetY) {
+
+    cv::Mat trans_mat = (cv::Mat_<double>(2,3) << 1, 0, offsetX, 0, 1, offsetY);
+
+    cv::warpAffine(img, img, trans_mat, img.size());
+
+}
+
 #endif /* POTENTIAL_FIELD_UTILS_HPP_ */
