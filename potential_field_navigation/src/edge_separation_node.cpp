@@ -227,13 +227,6 @@ void edge_dyeing(const sensor_msgs::ImageConstPtr &msg) {
 
     }
 
-//    /**
-//     * Debug only
-//     */
-//    cv::namedWindow("edgeMap", cv::WINDOW_NORMAL); // create a window for display.
-//    cv::imshow("edgeMap", edgeMap); // show image
-//    cv::waitKey(0); // wait for a keystroke in the window
-
     /**
      * Edge clustering
      */

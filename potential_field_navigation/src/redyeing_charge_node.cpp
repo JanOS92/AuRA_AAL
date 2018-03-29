@@ -81,11 +81,6 @@ void dyeing_charge(const sensor_msgs::ImageConstPtr &msg) {
      * Stay on line schema
      * ---------------------
      */
-//    cv::Mat inv;
-//    cv::Mat image_binary(image_gray.size(), image_gray.type());
-//    cv::bitwise_not(image_gray, inv); // invert the colors
-//    cv::threshold(inv, image_binary, 129, 255, cv::THRESH_BINARY);
-
     int kernelSizeX = image.cols / 40;
     int kernelSizeY = image.rows / 40;
 
@@ -155,16 +150,9 @@ void dyeing_charge(const sensor_msgs::ImageConstPtr &msg) {
     /**
      * dyedBGR postprocessing
      */
-    //ToDo: Could be better...
     cv::Mat inv_sharpend;
-    cv::GaussianBlur(dyedBGR, inv_sharpend, cv::Size(0, 0), 2); // cv::Size(0, 0): kernel size depends on sigmaX
-
-//    /**
-//    * Debug only
-//    */
-//    cv::namedWindow("inv_sharpend", cv::WINDOW_NORMAL); // create a window for display.
-//    cv::imshow("inv_sharpend", inv_sharpend); // show image
-//    cv::waitKey(0); // wait for a keystroke in the window
+//    cv::GaussianBlur(dyedBGR, inv_sharpend, cv::Size(0, 0), 2); // cv::Size(0, 0): kernel size depends on sigmaX
+    cv::GaussianBlur(dyedBGR, inv_sharpend, cv::Size(7, 7), 0); // magic line
 
 #pragma omp parallel for
     for (int idy = 0; idy < dyedBGR.rows; ++idy) {  // redye the image for charge
@@ -174,7 +162,7 @@ void dyeing_charge(const sensor_msgs::ImageConstPtr &msg) {
             cv::Vec3b &pixelOrig = dyedBGR.at<cv::Vec3b>(idy, idx);
             cv::Vec3b pixelBlur = inv_sharpend.at<cv::Vec3b>(idy, idx);
 
-            if(pixelOrig == blue && pixelBlur.val[2] >= 20) { // magic condition
+            if(pixelOrig == blue && pixelBlur.val[2] > 0) { // magic condition
 
                 pixelOrig = white;
 
