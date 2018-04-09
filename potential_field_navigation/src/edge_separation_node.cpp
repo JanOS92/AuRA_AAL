@@ -16,7 +16,7 @@
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
-#include <opencv-3.3.1/opencv2/imgproc.hpp>
+//#include <opencv-3.3.1/opencv2/imgproc.hpp>
 #include <omp.h>
 
 // Utils
@@ -113,7 +113,8 @@ void edge_dyeing(const sensor_msgs::ImageConstPtr &msg) {
         int blockSize = 2;
         int apertureSize = 3;
         double k = 0.04;
-        int thresh = 200;
+//        int thresh = 200;
+        int thresh = 225;
 
         // detecting corners
         cv::cornerHarris(image_binary, dst, blockSize, apertureSize, k, cv::BORDER_DEFAULT);
@@ -128,7 +129,7 @@ void edge_dyeing(const sensor_msgs::ImageConstPtr &msg) {
 
                 if ((int) dst_norm.at<float>(idx, idy) > thresh) { // caution: idx -> idy, idy -> idx
 
-//                    ROS_INFO("dst_norm.at<float>(%i, %i) = %i", idx, idy, (int) dst_norm.at<float>(idx, idy));
+                    ROS_INFO("dst_norm.at<float>(%i, %i) = %i", idx, idy, (int) dst_norm.at<float>(idx, idy));
                     cornerList.emplace_back(cv::Point(idy, idx));
 
                 }
@@ -136,7 +137,7 @@ void edge_dyeing(const sensor_msgs::ImageConstPtr &msg) {
         }
     }
 
-//    ROS_INFO("cornerList.size() = %i",cornerList.size());
+    ROS_INFO("cornerList.size() = %i",cornerList.size());
 
     /**
      * Edge extraction
@@ -254,11 +255,13 @@ void edge_dyeing(const sensor_msgs::ImageConstPtr &msg) {
 
             if(labelIdxEdgeMap == 1) { // leave the background (labelIdxEdgeMap == 0)
 
-                pixel = cv::Vec3b( dyeValue_max, 0.0, 0.0 ); // blue
+//                pixel = cv::Vec3b( dyeValue_max, 0.0, 0.0 ); // blue (cw)
+                pixel = cv::Vec3b( 0.0, 0.0, dyeValue_max ); // red (ccw)
 
             } else if (labelIdxEdgeMap == 2) {
 
-                pixel = cv::Vec3b( 0.0, 0.0, dyeValue_max ); // red
+//                pixel = cv::Vec3b( 0.0, 0.0, dyeValue_max ); // red (cw)
+                pixel = cv::Vec3b( dyeValue_max, 0.0, 0.0 ); // blue (ccw)
 
             } else {
 

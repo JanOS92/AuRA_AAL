@@ -53,6 +53,7 @@ void process(const cv::Mat &vectorfield, const nav_msgs::OdometryConstPtr odom) 
     } else {
 
         tf::StampedTransform transform; //Transformation between the robot and the vector field (JO)
+
         try {
 
             listener->lookupTransform("potential_field", "/amiro1/base_link", ros::Time(0), transform);

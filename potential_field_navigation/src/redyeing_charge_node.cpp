@@ -16,7 +16,7 @@
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
-#include <opencv-3.3.1/opencv2/imgproc.hpp>
+//#include <opencv-3.3.1/opencv2/imgproc.hpp>
 
 // Utils
 #include "potential_field_utils.hpp"
