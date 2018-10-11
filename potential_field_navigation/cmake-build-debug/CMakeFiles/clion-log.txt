@@ -20,16 +20,34 @@
 -- Using Python nosetests: /vol/robocup/nightly-2017-03-30/bin/nosetests-2.7
 -- catkin 0.7.11
 -- Using these message generators: gencpp;geneus;genjava;genlisp;gennodejs;genpy
-CMake Error at /homes/josullivan/catkin_ws/devel/share/grid_map_core/cmake/grid_map_coreConfig.cmake:113 (message):
-  Project 'grid_map_core' specifies
-  '/homes/josullivan/catkin_ws/src/grid_map/grid_map_core/include' as an
-  include dir, which is not found.  It does neither exist as an absolute
-  directory nor in
-  '/homes/josullivan/catkin_ws/src/grid_map/grid_map_core//homes/josullivan/catkin_ws/src/grid_map/grid_map_core/include'.
-  Check the issue tracker 'http://github.com/ethz-asl/grid_map/issues' and
-  consider creating a ticket if the problem has not been reported yet.
+CMake Warning at /opt/ros/kinetic/share/catkin/cmake/catkinConfig.cmake:76 (find_package):
+  Could not find a package configuration file provided by "grid_map_core"
+  with any of the following names:
+
+    grid_map_coreConfig.cmake
+    grid_map_core-config.cmake
+
+  Add the installation prefix of "grid_map_core" to CMAKE_PREFIX_PATH or set
+  "grid_map_core_DIR" to a directory containing one of the above files.  If
+  "grid_map_core" provides a separate development package or SDK, be sure it
+  has been installed.
 Call Stack (most recent call first):
-  /opt/ros/kinetic/share/catkin/cmake/catkinConfig.cmake:76 (find_package)
+  CMakeLists.txt:11 (find_package)
+
+
+-- Could not find the required component 'grid_map_core'. The following CMake error indicates that you either need to install the package with the same name or change your environment so that it can be found.
+CMake Error at /opt/ros/kinetic/share/catkin/cmake/catkinConfig.cmake:83 (find_package):
+  Could not find a package configuration file provided by "grid_map_core"
+  with any of the following names:
+
+    grid_map_coreConfig.cmake
+    grid_map_core-config.cmake
+
+  Add the installation prefix of "grid_map_core" to CMAKE_PREFIX_PATH or set
+  "grid_map_core_DIR" to a directory containing one of the above files.  If
+  "grid_map_core" provides a separate development package or SDK, be sure it
+  has been installed.
+Call Stack (most recent call first):
   CMakeLists.txt:11 (find_package)
 
 

@@ -63,12 +63,19 @@
         <param name="vectorfield_publisher_topic" value="/vectorfield/final_image"/>
     </node>
 
-    <node name="vectorfield_to_gridmap_node" pkg="potential_field_navigation" type="vectorfield_to_gridmap_node" output="screen" cwd="ROS_HOME">
-        <param name="meter_per_pixel" value="$(arg meter_per_pixel)"/>
+    <!--node name="vectorfield_to_gridmap_node" pkg="potential_field_navigation" type="vectorfield_to_gridmap_node" output="screen" cwd="ROS_HOME">
+	<param name="meter_per_pixel" value="$(arg meter_per_pixel)"/>
         <param name="frame_id" value="potential_field"/>
         <param name="vectorfield_listener_topic" value="/vectorfield/final_image"/>
         <param name="gridmap_publisher_topic" value="/vectorfield/image/gridmap"/>
-    </node>
+    </node-->
+
+<node
+  name="vectorfield_to_gridmap_node"
+  pkg="aal_potential_field_navigation"
+  type="aal_potential_field_navigation_vectorfield_to_gridmap_node"
+  output="screen"
+  cwd="ROS_HOME"/>
 
     <!--Steering-->
     <node name="amiro1_vectorfield_to_kinematic_node" pkg="potential_field_navigation" type="vectorfield_to_kinematic_node" output="screen" cwd="ROS_HOME">

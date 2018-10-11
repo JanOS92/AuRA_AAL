@@ -129,7 +129,7 @@ void edge_dyeing(const sensor_msgs::ImageConstPtr &msg) {
 
                 if ((int) dst_norm.at<float>(idx, idy) > thresh) { // caution: idx -> idy, idy -> idx
 
-                    ROS_INFO("dst_norm.at<float>(%i, %i) = %i", idx, idy, (int) dst_norm.at<float>(idx, idy));
+//                    ROS_INFO("dst_norm.at<float>(%i, %i) = %i", idx, idy, (int) dst_norm.at<float>(idx, idy));
                     cornerList.emplace_back(cv::Point(idy, idx));
 
                 }
@@ -137,7 +137,7 @@ void edge_dyeing(const sensor_msgs::ImageConstPtr &msg) {
         }
     }
 
-    ROS_INFO("cornerList.size() = %i",cornerList.size());
+//    ROS_INFO("cornerList.size() = %i",cornerList.size());
 
     /**
      * Edge extraction

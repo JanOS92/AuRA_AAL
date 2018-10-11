@@ -60,9 +60,9 @@ void processValueArray(rsb::EventPtr event) {
     }
 
     data.push_back(entry.int_());
-    ROS_INFO("%i", data.back());
+    ROS_DEBUG("%i", data.back());
   }
-  ROS_INFO("=======");
+  ROS_DEBUG("=======");
 
   std_msgs::MultiArrayLayout layout;
   std::vector<std_msgs::MultiArrayDimension> dimensions;

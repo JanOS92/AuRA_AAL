@@ -425,7 +425,7 @@ gmock_build_tests:BOOL=OFF
 gmock_main_LIB_DEPENDS:STATIC=general;-lpthread;
 
 //The directory containing a CMake configuration file for grid_map_core.
-grid_map_core_DIR:PATH=/homes/josullivan/catkin_ws/devel/share/grid_map_core/cmake
+grid_map_core_DIR:PATH=grid_map_core_DIR-NOTFOUND
 
 //The directory containing a CMake configuration file for grid_map_costmap_2d.
 grid_map_costmap_2d_DIR:PATH=/homes/josullivan/catkin_ws/devel/share/grid_map_costmap_2d/cmake

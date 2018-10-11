@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # amiro_potential_field_navigation
 
 ## References
@@ -58,3 +59,13 @@ export CMAKE_PREFIX_PATH=$F:${CMAKE_PREFIX_PATH}
 * Saturation is not used for now
 
 ![colorspace](colorspace.png)
+=======
+# RVIZ Textured Quads
+Plugin: Displays textured images (realtime or static sensor_msgs/Image topics) in 3D space
+
+![Demo](https://github.com/MohitShridhar/rviz_textured_quads/blob/master/gifs/rviz_demo.gif)
+
+## Usage
+
+See TexturedQuad.msg
+>>>>>>> a1e60b38eeb878c23c32d9d0597629f0524bb0df
