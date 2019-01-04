@@ -40,11 +40,12 @@ Please have a look at the project README.
 6. open a new terminal and go into the scripts folder: `cd ~/{path to your workspace}/src/AuRA_AAL/aura/scripts`
 7. start the execution: `python ./AMiRoA_fsm.py`
 
-[![Gazebo Simulation](https://img.youtube.com/vi/v=XzC6PFxVVj8&t=2s)
-/0.jpg)](https://www.youtube.com/watch?v=XzC6PFxVVj8&t=2s)
+[![Gazebo](https://img.youtube.com/vi/XzC6PFxVVj8/0.jpg)](https://www.youtube.com/watch?v=XzC6PFxVVj8&t=2s)
 
 #### TWB
 ToDo
+
+[![TWB](https://img.youtube.com/vi/U0d7B_Q4kNs/0.jpg)](https://www.youtube.com/watch?v=U0d7B_Q4kNs&t=2s)
 
 ### Add motor schemas
 ToDo
