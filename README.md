@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # amiro_potential_field_navigation
 
 ## References
@@ -68,4 +67,3 @@ Plugin: Displays textured images (realtime or static sensor_msgs/Image topics) i
 ## Usage
 
 See TexturedQuad.msg
->>>>>>> a1e60b38eeb878c23c32d9d0597629f0524bb0df
