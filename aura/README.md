@@ -40,6 +40,8 @@ Please have a look at the project README.
 6. open a new terminal and go into the scripts folder: `cd ~/{path to your workspace}/src/AuRA_AAL/aura/scripts`
 7. start the execution: `python ./AMiRoA_fsm.py`
 
+<iframe width="560" height="315" src="https://www.youtube.com/embed/XzC6PFxVVj8" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+
 #### TWB
 ToDo
 
