@@ -1,0 +1,10 @@
+# Define the goal
+uint64 id_ui                # schema id
+uint64 finalTargetRFID_ui   # final RFID
+int8 checkJobLogic_i        # define check job logic
+---
+# Define the result
+int8 errorCode_i            # error specification
+---
+# Define a feedback message
+int8 RFIDAction_i              # result

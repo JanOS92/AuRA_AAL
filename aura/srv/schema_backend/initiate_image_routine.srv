@@ -1,0 +1,14 @@
+#request constants
+#...
+
+#request fields
+#...
+
+---
+
+#response constants
+#...
+
+#response fields
+int8 errorCode_i
+int8 jobDone_i

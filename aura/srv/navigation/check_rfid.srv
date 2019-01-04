@@ -1,0 +1,19 @@
+#request constants
+#...
+
+#request fields
+uint64 initialRFID_ui       # first detected RFID
+uint64 currentRFID_ui       # current RFID
+uint64 lastRFID_ui          # last detected RFID
+uint64 targetRFID_ui        # final target RFID
+
+---
+
+#response constants
+#...
+
+#response fields
+int8 jobDone_i              # result
+int8 errorCode_i            # error specification
+int8 located_i              # result of checking the current RFID
+int8 action_i               # resultant action in dependency of the current RFID

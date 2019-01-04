@@ -1,0 +1,80 @@
+<?xml version="1.0"?>
+<launch>
+
+    <!-- These are the arguments you can pass this launch file, for example paused:=true -->
+    <arg name="paused" default="false"/>
+    <arg name="use_sim_time" default="true"/>
+    <arg name="gz_gui" default="false"/>
+    <arg name="gz_headless" default="false"/>
+    <arg name="gz_debug" default="false"/>
+    <arg name="gz_verbose" default="false"/>
+    <arg name="gz_respawn_gazebo" default="false"/>
+    <arg name="gz_update_rate" default="50.0"/> <!--Update rate for tfs and gazebo plugins-->
+    <arg name="potentialfield_offset_x" default="2.5"/>
+    <arg name="potentialfield_offset_y" default="2.5"/>
+
+    <!-- We resume the logic in empty_world.launch, changing only the name of the world to be launched -->
+    <include file="$(find gazebo_ros)/launch/empty_world.launch">
+        <arg name="world_name" value="$(find amiro_gazebo)/worlds/assembly_line_project.world"/>
+        <arg name="debug" value="$(arg gz_debug)"/>
+        <arg name="gui" value="$(arg gz_gui)"/>
+        <arg name="paused" value="$(arg paused)"/>
+        <arg name="use_sim_time" value="$(arg use_sim_time)"/>
+        <arg name="headless" value="$(arg gz_headless)"/>
+        <arg name="verbose" value="$(arg gz_verbose)"/>
+        <arg name="respawn_gazebo" value="$(arg gz_respawn_gazebo)"/>
+    </include>
+
+    <!-- Load the AMiRo basic with namespace amiro7 -->
+    <!--AAL-->
+    <include file="$(find amiro_description)/launch/amiro.launch" clear_params="true" ns="amiro7">
+        <arg name="robot_name" value="amiro7"/>
+        <arg name="robot_position" value="-x 1.9544 -y 1.2152 -z 0.01 -R 0.0 -P 0.0 -Y 1.57079632679" />
+        <arg name="update_rate" value="$(arg gz_update_rate)"/>
+        <arg name="robot_model" value="amiro_basic.xacro"/>
+        <arg name="enable_proximity_floor_mockup" value="true"/>
+        <arg name="enable_proximity_ring_mockup" value="true"/>
+        <!--RFID mockup starts seperately-->
+        <!--<arg name="enable_rfid_mockup" value="false"/>-->
+        <!--<arg name="rfid_yaml_file" value="$(find amiro_gazebo)/yaml/rfid_assembly_line_project.yaml"/>-->
+    </include>
+
+    <!--Obstacles-->
+
+    <!-- Load the AMiRo basic with namespace amiro2 -->
+    <!--AAL-->
+    <include file="$(find amiro_description)/launch/amiro.launch" clear_params="true" ns="amiro2">
+        <arg name="robot_name" value="amiro2"/>
+        <arg name="robot_position" value="-x 3.216144 -y 1.962765 -z 0.01 -R 0.0 -P 0.0 -Y 1.57079632679" />
+        <arg name="update_rate" value="$(arg gz_update_rate)"/>
+        <arg name="robot_model" value="amiro_basic.xacro"/>
+    </include>
+
+    <!-- Load the AMiRo basic with namespace amiro3 -->
+    <!--AAL-->
+    <include file="$(find amiro_description)/launch/amiro.launch" clear_params="true" ns="amiro3">
+        <arg name="robot_name" value="amiro3"/>
+        <arg name="robot_position" value="-x 4.364724 -y 2.980903 -z 0.01 -R 0.0 -P 0.0 -Y 1.57079632679" />
+        <arg name="update_rate" value="$(arg gz_update_rate)"/>
+        <arg name="robot_model" value="amiro_basic.xacro"/>
+    </include>
+
+    <!-- Load the AMiRo basic with namespace amiro4 -->
+    <!--AAL-->
+    <include file="$(find amiro_description)/launch/amiro.launch" clear_params="true" ns="amiro4">
+        <arg name="robot_name" value="amiro4"/>
+        <arg name="robot_position" value="-x 4.864724 -y 2.980903 -z 0.01 -R 0.0 -P 0.0 -Y 1.57079632679" />
+        <arg name="update_rate" value="$(arg gz_update_rate)"/>
+        <arg name="robot_model" value="amiro_basic.xacro"/>
+    </include>
+
+    <!-- Load the AMiRo basic with namespace amiro5 -->
+    <!--AAL-->
+    <include file="$(find amiro_description)/launch/amiro.launch" clear_params="true" ns="amiro5">
+        <arg name="robot_name" value="amiro5"/>
+        <arg name="robot_position" value="-x 4.364724 -y 3.980903 -z 0.01 -R 0.0 -P 0.0 -Y 1.57079632679" />
+        <arg name="update_rate" value="$(arg gz_update_rate)"/>
+        <arg name="robot_model" value="amiro_basic.xacro"/>
+    </include>
+
+</launch>

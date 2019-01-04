@@ -1,0 +1,15 @@
+#request constants
+#...
+
+#request fields
+uint64 currentRFID_ui       # current RFID
+
+---
+
+#response constants
+#...
+
+#response fields
+int8 jobDone_i              # result
+int8 errorCode_i            # error specification
+uint8 RFIDType_i            # result

@@ -1,0 +1,86 @@
+<launch>
+
+    <arg name="robot_name" default="amiro7"/> <!-- Robot and prefix name -->
+    <arg name="rfid_yaml_file" default="$(find amiro_gazebo)/yaml/rfid_assembly_line_automatica.yaml"/>
+    <arg name="enable_rfid_mockup" default="true"/>
+    <arg name="map_frame" default="map"/>
+    <arg name="cam_frame" default="cam3"/>
+    <arg name="world_frame" default="world"/>
+    <arg name="potentialfield_frame" default="potentialfield"/>
+    <!--mind the marker offset-->
+    <!--<arg name="potentialfield_offset_x" default="0.7655"/>-->
+    <arg name="potentialfield_offset_x" default="0.7700"/>
+    <!--<arg name="potentialfield_offset_y" default="0.3755"/>-->
+    <arg name="potentialfield_offset_y" default="0.3900"/>
+    <arg name="potentialfield_offset_z" default="-0.01"/>
+    <arg name="broadcast_period_ms" default="33.3"/>
+
+    <!--<param name="use_sim_time" value="false"/>-->
+
+    <!--Helper nodes-->
+    <node
+            name="image_converting_node"
+            pkg="aal_potential_field_navigation"
+            type="aal_potential_field_navigation_image_converting_node"
+            output="screen"/>
+
+    <node
+            name="beacon_node"
+            pkg="aal_potential_field_navigation"
+            type="aal_potential_field_navigation_beacon_node"
+            output="screen"/>
+
+    <!--<node-->
+    <!--name="dynamic_tf_broadcaster_node"-->
+    <!--pkg="aal_potential_field_navigation"-->
+    <!--type="aal_potential_field_navigation_dynamic_tf_broadcaster_node"-->
+    <!--output="screen"/>-->
+
+    <!--Marker 0 frame-->
+    <node
+            name="dynamic_tf_with_odom_marker0"
+            pkg="aal_potential_field_navigation"
+            type="aal_potential_field_navigation_dynamic_tf_with_odom_node"
+            output="screen">
+        <!--<param name="ros_listener_odom_topic" value="/aruco3_node3_2/cam/odom/0"/>-->
+        <param name="ros_listener_odom_topic" value="/odometry/filtered/0"/>
+        <param name="child_frame" value="$(arg map_frame)"/>
+        <!--<param name="parent_frame" value="$(arg cam_frame)"/>-->
+        <param name="parent_frame" value="$(arg world_frame)"/>
+        <param name="z_offset" value="3.7"/>
+        <param name="alpha_position" value="0.9"/>
+        <param name="apply_low_pass" value="false"/>
+    </node>
+
+    <!--Marker 5 frame-->
+    <node
+            name="dynamic_tf_with_odom_marker5"
+            pkg="aal_potential_field_navigation"
+            type="aal_potential_field_navigation_dynamic_tf_with_odom_node"
+            output="screen">
+        <!--<param name="ros_listener_odom_topic" value="/aruco3_node3_2/cam/odom/5"/>-->
+        <param name="ros_listener_odom_topic" value="/odometry/filtered/5"/>
+        <param name="child_frame" value="$(arg robot_name)/base_link"/>
+        <!--<param name="parent_frame" value="$(arg cam_frame)"/>-->
+        <param name="parent_frame" value="$(arg world_frame)"/>
+        <param name="z_offset" value="3.7"/>
+        <param name="alpha_position" value="0.9"/>
+        <param name="apply_low_pass" value="false"/>
+    </node>
+
+    <!-- tf between the map and the potential frame -->
+    <node name="map_potential_tf" pkg="tf" type="static_transform_publisher"
+          args="$(arg potentialfield_offset_x) $(arg potentialfield_offset_y) $(arg potentialfield_offset_z) 0.0 0.0 0.0 $(arg map_frame) $(arg potentialfield_frame) $(arg broadcast_period_ms)"/>
+
+    <!-- Mockup for RFID tag reader -->
+    <group if="$(arg enable_rfid_mockup)">
+        <node name="rfid_mockup_node" pkg="aal_potential_field_navigation"
+              type="aal_potential_field_navigation_rfid_mockup_node" respawn="true" output="screen">
+            <!--<param name="topic_in" type="string" value="/$(arg robot_name)/odom"/>-->
+            <param name="topic_out" type="string" value="/$(arg robot_name)/rfid_tag_list"/>
+            <param name="max_tag_distance_m" type="double" value="0.075"/>
+            <rosparam command="load" file="$(arg rfid_yaml_file)"/>
+        </node>
+    </group>
+
+</launch>

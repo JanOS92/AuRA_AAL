@@ -1,0 +1,107 @@
+<?xml version="1.0"?>
+
+<launch>
+
+    <!--Arguments and parameters-->
+    <arg name="robot_name" default="amiro7"/> <!-- Robot and prefix name -->
+    <param name="use_sim_time" value="false"/>
+
+    <!--RViz-->
+    <node name="rviz" pkg="rviz" type="rviz" args="-d $(find potential_field_navigation)/config/config_gazebo.rviz" output="screen" respawn="true"/>
+
+    <!--Motor schema nodes-->
+    <node
+            name="move_robot"
+            pkg="aal_potential_field_navigation"
+            type="aal_potential_field_navigation_move_robot_node"
+            output="screen"/>
+
+    <node
+            name="stay_on_path"
+            pkg="aal_potential_field_navigation"
+            type="aal_potential_field_navigation_stay_on_path_node"
+            output="screen"/>
+
+    <node
+            name="wait_for_obstacle"
+            pkg="aal_potential_field_navigation"
+            type="aal_potential_field_navigation_wait_for_obstacle_node"
+            output="screen"/>
+
+    <node
+            name="avoid_obstacle"
+            pkg="aal_potential_field_navigation"
+            type="aal_potential_field_navigation_avoid_obstacle_node"
+            output="screen"/>
+
+    <node
+            name="move_to_target"
+            pkg="aal_potential_field_navigation"
+            type="aal_potential_field_navigation_move_to_target_node"
+            output="screen"/>
+
+    <!--Visualization-->
+
+    <node
+            name="vectorfield_to_gridmap_node"
+            pkg="aal_potential_field_navigation"
+            type="aal_potential_field_navigation_vectorfield_to_gridmap_node"
+            output="screen"
+            cwd="ROS_HOME"/>
+
+    <node
+            name="vectorfield_merger_node"
+            pkg="aal_potential_field_navigation"
+            type="aal_potential_field_navigation_vectorfield_merger_node"
+            output="screen"
+            cwd="ROS_HOME"/>
+
+    <node
+            name="finalGradient_marker_node"
+            pkg="aal_potential_field_navigation"
+            type="aal_potential_field_navigation_finalGradient_marker_node"
+            output="screen"
+            cwd="ROS_HOME"/>
+
+    <node
+            name="map_to_textured_quads_node"
+            pkg="aal_potential_field_navigation"
+            type="aal_potential_field_navigation_map_to_textured_quads_node"
+            output="screen"
+            cwd="ROS_HOME"/>
+
+    <!--<node-->
+            <!--name="gradient_orientation_plot_node"-->
+            <!--pkg="aal_potential_field_navigation"-->
+            <!--type="aal_potential_field_navigation_gradient_orientation_plot_node"-->
+            <!--output="screen"-->
+            <!--cwd="ROS_HOME"/>-->
+
+    <!--<node-->
+            <!--name="trace_node"-->
+            <!--pkg="aal_potential_field_navigation"-->
+            <!--type="aal_potential_field_navigation_trace_node"-->
+            <!--output="screen"-->
+            <!--cwd="ROS_HOME"/>-->
+
+    <!--<node name="orientation_plot"-->
+    <!--pkg="rqt_plot"-->
+    <!--type="rqt_plot"-->
+    <!--args="/gradient_orientation_plot_node/plot_orientation/data[0] /gradient_orientation_plot_node/plot_orientation/data[1]"/>-->
+
+    <!--<node-->
+            <!--name="SmachViewer"-->
+            <!--pkg="smach_viewer"-->
+            <!--type="smach_viewer.py"-->
+    <!--/>-->
+
+    <!--Test-->
+
+    <!--<node-->
+            <!--name="test_node"-->
+            <!--pkg="aal_potential_field_navigation"-->
+            <!--type="aal_potential_field_navigation_test_node"-->
+            <!--output="screen"-->
+            <!--cwd="ROS_HOME"/>-->
+
+</launch>

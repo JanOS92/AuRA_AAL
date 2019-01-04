@@ -1,0 +1,8 @@
+# Define the goal
+bool doTracing           # ...
+---
+# Define the result
+bool done                # ...
+---
+# Define a feedback message
+# no feedback required

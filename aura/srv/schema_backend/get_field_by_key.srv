@@ -1,0 +1,17 @@
+#request constants
+#...
+
+#request fields
+string fieldTypeKeyword_st
+string fieldImageName_st
+string fieldNamePostfix_st
+
+---
+
+#response constants
+#...
+
+#response fields
+sensor_msgs/Image field_c
+int8 errorCode_i
+int8 jobDone_i

@@ -1,0 +1,54 @@
+<launch>
+
+    <param name="use_sim_time" value="true"/>
+
+    <arg name="robot_name" default="amiro7"/> <!-- Robot and prefix name -->
+    <!--<arg name="rfid_yaml_file" default="$(find amiro_gazebo)/yaml/rfid_assembly_line_project.yaml"/>-->
+    <arg name="rfid_yaml_file" default="$(find amiro_gazebo)/yaml/rfid_assembly_line_automatica.yaml"/>
+    <arg name="enable_rfid_mockup" default="true"/>
+    <arg name="map_frame" default="map"/>
+    <arg name="cam_frame" default="cam3"/>
+    <arg name="world_frame" default="world"/>
+    <arg name="potentialfield_frame" default="potentialfield"/>
+    <!--AMiRo Assembly Line (AAL)-->
+    <!--<arg name="potentialfield_offset_x" default="2.5"/>-->
+    <!--<arg name="potentialfield_offset_y" default="2.5"/>-->
+    <!--Automatica-->
+    <arg name="potentialfield_offset_x" default="0.7948"/>
+    <arg name="potentialfield_offset_y" default="0.3921"/>
+    <arg name="potentialfield_offset_z" default="-0.01"/>
+    <arg name="broadcast_period_ms" default="50"/>
+
+    <!--Helper nodes-->
+    <node
+            name="image_converting_node"
+            pkg="aal_potential_field_navigation"
+            type="aal_potential_field_navigation_image_converting_node"
+            output="screen"/>
+
+    <node
+            name="beacon_node"
+            pkg="aal_potential_field_navigation"
+            type="aal_potential_field_navigation_beacon_node"
+            output="screen"/>
+
+    <!-- tf between the world and the map -->
+    <node name="world_map_tf" pkg="tf" type="static_transform_publisher"
+          args="0.0 0.0 0.0 0.0 0.0 0.0 $(arg world_frame) $(arg map_frame) $(arg broadcast_period_ms)"/>
+
+    <!-- tf between the map and the potential frame -->
+    <node name="map_potential_tf" pkg="tf" type="static_transform_publisher"
+          args="$(arg potentialfield_offset_x) $(arg potentialfield_offset_y) $(arg potentialfield_offset_z) 0.0 0.0 0.0 $(arg map_frame) $(arg potentialfield_frame) $(arg broadcast_period_ms)"/>
+
+    <!-- Mockup for RFID tag reader -->
+    <group if="$(arg enable_rfid_mockup)">
+        <node name="rfid_mockup_node" pkg="aal_potential_field_navigation"
+              type="aal_potential_field_navigation_rfid_mockup_node" respawn="true" output="screen">
+            <!--<param name="topic_in" type="string" value="/$(arg robot_name)/odom"/>-->
+            <param name="topic_out" type="string" value="/$(arg robot_name)/rfid_tag_list"/>
+            <param name="max_tag_distance_m" type="double" value="0.1"/>
+            <rosparam command="load" file="$(arg rfid_yaml_file)"/>
+        </node>
+    </group>
+
+</launch>

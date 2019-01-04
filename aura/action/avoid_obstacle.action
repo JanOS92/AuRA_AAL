@@ -1,0 +1,8 @@
+# Define the goal
+uint64 id_ui                # schema id
+---
+# Define the result
+int8 errorCode_i            # error specification
+---
+# Define a feedback message
+# no feedback required
