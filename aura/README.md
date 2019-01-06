@@ -5,9 +5,13 @@ This project includes a modern implementation of the *AuRA* within the *ROS* fra
 
 *AuRA: Principles and Practice in Review, Ronald C. Arkin and Tucker Balch, College of Computing Georgia Institute of Technology Atlanta, Georgia 30332*
 
+The overall application of the described implementation is called *AMiRo Assembly Line* or in short *AAL*. The *AMiRo* shall act as a transporation vehicle on a robotic assembly line. The assembly line depict a route network like this one shown in the picture or videos below.
+
+..picture..
+
 ## How To
 ### Setup
-Please have a look at the project README.
+Please have a look at the project README.md.
 
 ### Build
 #### Gazebo
@@ -43,7 +47,14 @@ Please have a look at the project README.
 [![Gazebo](https://img.youtube.com/vi/XzC6PFxVVj8/0.jpg)](https://www.youtube.com/watch?v=XzC6PFxVVj8&t=2s)
 
 #### TWB
-ToDo
+1. prepare the *AMiRo(s)* for remote control (TWB), have a look at the project README.md.
+2. go into your catkin_ws: `cd ~/{path to your workspace}`
+3. source the *ROS* environment: `source devel/setup.bash`
+4. launch a helper node: `roslaunch aura helper_launcher_TWB`
+5. open a new terminal and repeat steps 2. and 3.
+6. launch a main node: `roslaunch aura apfn_launcher_TWB`
+7. open a new terminal and go into the scripts folder: `cd ~/{path to your workspace}/src/AuRA_AAL/aura/scripts`
+8. start the execution: `python ./AMiRoA_fsm.py`
 
 [![TWB](https://img.youtube.com/vi/U0d7B_Q4kNs/0.jpg)](https://www.youtube.com/watch?v=U0d7B_Q4kNs&t=2s)
 
