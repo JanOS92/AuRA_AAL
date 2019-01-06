@@ -21,6 +21,7 @@ Please have a look at the project README.md.
 #define TWB 0
 ```
 * go into your catkin_ws: `cd ~/{path}`
+* source *ROS* environment: `source ~/opt/ros/{version}/setup.bash`
 * build: `catkin_make -DCMAKE_BUILD_TYPE=Release`
 
 #### TWB
@@ -30,6 +31,7 @@ Please have a look at the project README.md.
 #define TWB 1
 ```
 * go into your workspace: `cd ~/{path}`
+* source *ROS* environment: `source ~/opt/ros/{version}/setup.bash`
 * build: `catkin_make -DCMAKE_BUILD_TYPE=Release`
 
 ### Launch
