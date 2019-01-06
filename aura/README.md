@@ -9,7 +9,7 @@ The overall application of the described implementation is called *AMiRo Assembl
 
 ..picture..
 
-## How To
+## How Tos
 ### Setup
 Please have a look at the project README.md.
 
