@@ -59,7 +59,98 @@ Please have a look at the project README.md.
 [![TWB](https://img.youtube.com/vi/U0d7B_Q4kNs/0.jpg)](https://www.youtube.com/watch?v=U0d7B_Q4kNs&t=2s)
 
 ### Add motor schemas
-ToDo
+This *HowTo* describes only how a new motor schema has to be integrated into the architecture environment. The creation of a new motor schema class can easily oriented at the examples. Please keep in mind that you've to add new classes to the custom library in the CMakeLists.txt.
+
+#### Schema Controller
+1. go into the action folder: `cd ~/{path to your workspace}/src/AuRA_AAL/aura/action`
+2. create a new action file for your motor schema by defining goal (high level information), result and feedback parameters: `touch {name}.action && echo "{content} >> {name}.action"`
+3. register the action file in the CMakeLists.txt:
+```xml
+# Generate actions in the 'action' folder
+add_action_files(
+        DIRECTORY action FILES
+        ...
+        # motor schemas
+        {name}.action
+)
+```
+4. go into your catkin_ws: `cd ~/{path}`
+5. build: `catkin_make -DCMAKE_BUILD_TYPE=Release`
+6. go into your src folder: `cd ~/{path to your workspace}/src/AuRA_AAL/aura/src`
+7. create a new node cpp file: `touch {name}.cpp`
+8. open the new node file and use the following template:
+```cpp
+
+...
+
+/// INCLUDES
+
+// ROS
+#include "ros/ros.h"
+
+// ROS action
+#include "../../../../install/include/aal_potential_field_navigation/{name}Action.h"
+#include <actionlib/server/simple_action_server.h>
+
+...
+
+/// LOCAL VARIABLES
+
+typedef actionlib::SimpleActionServer<aal_potential_field_navigation::{name}Action> {Name}ActionServer_c;
+aal_potential_field_navigation::{name}Result {Name}Result_c;
+boost::shared_ptr<const typename actionlib::SimpleActionServer<aal_potential_field_navigation::{name}Action>::Goal> newGoalPtr_pc;
+
+...
+
+/// ROS ACTION
+
+/// {name}Action_v
+/// \param goal_c
+/// \param actionServer_c
+void {name}Action_v(const aal_potential_field_navigation::{name}GoalConstPtr &goal_c,
+{Name}ActionServer_c *actionServer_c) {
+
+ while (ros::ok()) { // execution loop
+ 
+  // motor schema execution
+ 
+ }
+ 
+ {Name}Result_c.errorCode_i = NO_ERROR; // quit the job without causing an error handling
+ actionServer_c->setSucceeded({Name}Result_c); // set the server state to "Succeeded"
+
+}
+
+/// MAIN
+
+/// main
+/// \param argc_i
+/// \param argv_pch
+/// \return 0
+int main(int argc_i, char *argv_pch[]) {
+
+    // init ROS
+    ros::init(argc_i, argv_pch, ros::this_node::getName());
+    ros::NodeHandle node_c("~");
+    ROS_INFO("Start: %s", ros::this_node::getName().c_str());
+    ros::Rate loopRate_c(LOOP_RATE_i);
+
+    // ROS action (server)
+    {Name}ActionServer_c actionServer_c(node_c, {Name}, boost::bind(&{name}Action_v, _1, &actionServer_c), false);
+    actionServer_c.start();
+
+    ROS_INFO("[%s] {Name} action server is online", ros::this_node::getName().c_str());
+
+    ros::spin(); // keep this node alive
+
+    return 0;
+
+}
+```
+9. build: `catkin_make -DCMAKE_BUILD_TYPE=Release`
+
+#### Plan Sequencer
+
 
 ### Add perceptual schemas
 ToDo
