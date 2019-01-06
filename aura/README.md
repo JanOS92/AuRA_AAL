@@ -150,7 +150,78 @@ int main(int argc_i, char *argv_pch[]) {
 9. build: `catkin_make -DCMAKE_BUILD_TYPE=Release`
 
 #### Plan Sequencer
+1. go into the types folder: `cd ~/{path to your workspace}/src/AuRA_AAL/aura/scripts/types`
+2. add your motor schema to the enum.py file like the following:
+```python
+class MotorSchemaIds(Enum):
 
+    MOVEROBOT = 1
+    MOVETOTARGET = 2
+    STAYONPATH = 3
+    WAITFOROBSTACLE = 4
+    AVOIDOBSTACLE = 5
+    {NAME} = 6
 
-### Add perceptual schemas
-ToDo
+    ...
+```
+3. add your motor schema to the parameters.py file like the following:
+```python
+# Action names
+...
+{name}ActionName = "{name}"
+
+# Action topics
+...
+{name}ActionTopic = '/{name}/call_{name}'
+
+...
+```
+4. go into the interface folder: `cd ~/{path to your workspace}/src/AuRA_AAL/aura/scripts/interfaces`
+5. add your motor schema to the action_interfaces.py file like the following:
+```python
+...
+
+# ROS: Action
+...
+from aal_potential_field_navigation.msg import {name}Action, {name}
+
+...
+
+## Parameter:
+# -
+## Return
+# actionClientDic : dictionary (key : action name) of ActionClient objects
+def initializeActionInterface():
+
+    try:
+
+        # move-robot
+        actionClientHandler = getClientHandler(p.moveRobotActionName, p.moveRobotActionTopic, move_robotAction)
+        moveRobotActionClient = ac.ActionClient(p.moveRobotActionName, actionClientHandler, p.moveRobotActionTopic,             move_robotAction, move_robotGoal)
+        
+        ...
+        
+        # {name}
+        actionClientHandler = getClientHandler(p.{name}ActionName, p.{name}ActionTopic, {name}Action)
+        {name}ActionClient = ac.ActionClient(p.{name}ActionName, actionClientHandler, p.{name}ActionTopic,             {name}Action, {name}Goal)
+
+        ...
+        
+        actionClientDic = {... p.{name}ActionName : {name}ActionClient}
+        
+        ...
+```
+
+### Example
+#### Call a motor schema (python interface)
+```python
+# call {name}
+{name}ActionClient = self.__actionClientDic[p.{name}ActionName]
+goalBuffer = {name}ActionClient.getGoalHandler()
+goalBuffer.id_ui = e.MotorSchemaIds.{NAME}.value
+goalBuffer.{parameter} = ...
+...
+{name}ActionClient.getClientHandler().send_goal(goalBuffer, ...)
+```
+* please have a look at the examples in `~/{path to your workspace}/src/AuRA_AAL/aura/scripts/interfaces/action_interfaces.py`, `~/{path to your workspace}/src/AuRA_AAL/aura/types/states.py` and `~/{path to your workspace}/src/AuRA_AAL/aura/scripts/AMiRoA_fsm.py`
+* for additional information about the finite state machine framework SMACH look at: [ROS-SMACH](http://wiki.ros.org/smach)
