@@ -7,7 +7,7 @@ This project includes a modern implementation of the *AuRA* within the *ROS* fra
 
 The overall application of the described implementation is called *AMiRo Assembly Line* or in short *AAL*. The *AMiRo* shall act as a transporation vehicle on a robotic assembly line. The assembly line depict a route network like this one shown in the picture or videos below.
 
-..picture..
+![AAL][amiro_assembly_line.jpg]
 
 ## How Tos
 ### Setup
